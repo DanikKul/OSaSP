@@ -1,0 +1,1 @@
+/usr/bin/cc -g CMakeFiles/osisp_find.dir/main.c.o -o osisp_find 

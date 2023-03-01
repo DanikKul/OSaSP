@@ -1,0 +1,3 @@
+/home/dan/CLionProjects/osisp_find/cmake-build-debug/CMakeFiles/osisp_find.dir
+/home/dan/CLionProjects/osisp_find/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/dan/CLionProjects/osisp_find/cmake-build-debug/CMakeFiles/rebuild_cache.dir
