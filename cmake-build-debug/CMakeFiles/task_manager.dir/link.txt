@@ -1,0 +1,1 @@
+/usr/bin/cc -g CMakeFiles/task_manager.dir/main.c.o -o task_manager  -lcurses /usr/lib/aarch64-linux-gnu/libform.so 
