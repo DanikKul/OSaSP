@@ -1,0 +1,4 @@
+cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=make -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=c++ -G "CodeBlocks - Unix Makefiles" -S /home/dan/CLionProjects/lab2 -B /home/dan/CLionProjects/lab2/cmake-build-debug
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/dan/CLionProjects/lab2/cmake-build-debug
