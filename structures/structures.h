@@ -11,6 +11,7 @@ typedef struct {
     int process_id; // Process id
     int process_ppid; // Parent process id
     char process_state; // State of a process
+    int process_nice;
     char process_name[128]; // Name of a process
     char process_command[128]; // Terminal command that launched process
     double cpu_usage;
@@ -42,6 +43,7 @@ typedef struct {
     double cutime; // Waited-for-children's CPU time spent in user mode
     double cstime; // Waited-for-children's CPU time spent in kernel mode
     double starttime; // Time when the process started
+    int nice;
 } stat;
 
 // Average CPU usage for last 1, 5 and 15 minutes

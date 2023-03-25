@@ -19,7 +19,7 @@
 #define TIME_SNAPSHOT 100
 #define ONE_K 1024UL
 
-double getUptime () {
+double getUptime() {
 
     FILE *f = NULL;
     double uptime = 0;
@@ -34,11 +34,11 @@ double getUptime () {
 
 }
 
-unsigned long getResidentMemory (const char *pid) {
+unsigned long getResidentMemory(const char *pid) {
 
     unsigned long resident_mem, virtual_mem;
     FILE *f = NULL;
-    char *fullpath = (char*) calloc(256, sizeof(char));
+    char *fullpath = (char *) calloc(256, sizeof(char));
 
     strcpy(fullpath, PROC_PATH);
     strcat(fullpath, "/");
@@ -51,22 +51,23 @@ unsigned long getResidentMemory (const char *pid) {
     if (!fscanf(f, "%lu %lu", &virtual_mem, &resident_mem)) return -1;
 
     fclose(f);
+    free(fullpath);
 
     return resident_mem;
 
 }
 
-int getThreads (processes *proc) {
+int getThreads(processes *proc) {
 
     int threads = 0;
-    for (int i = 0; i < proc -> n; i++) {
+    for (int i = 0; i < proc->n; i++) {
 
-        char *pid = (char*) calloc(20, sizeof(char)), buffer[20];
+        char *pid = (char *) calloc(20, sizeof(char)), buffer[20];
         FILE *f = NULL;
-        char *fullpath = (char*) calloc(256, sizeof(char));
+        char *fullpath = (char *) calloc(256, sizeof(char));
         const char *token = "Threads:";
 
-        sprintf(pid, "%d", proc -> processes[i].process_id);
+        sprintf(pid, "%d", proc->processes[i].process_id);
 
         strcpy(fullpath, PROC_PATH);
         strcat(fullpath, "/");
@@ -97,10 +98,10 @@ int getThreads (processes *proc) {
 
 }
 
-avgCPUUsage *getLoadAvg () {
+avgCPUUsage *getLoadAvg() {
 
     FILE *f = NULL;
-    avgCPUUsage *avgUsage = (avgCPUUsage*) calloc(1, sizeof(avgCPUUsage));
+    avgCPUUsage *avgUsage = (avgCPUUsage *) calloc(1, sizeof(avgCPUUsage));
 
     if (!(f = fopen("/proc/loadavg", "r"))) return NULL;
 
@@ -112,9 +113,9 @@ avgCPUUsage *getLoadAvg () {
     if (!fscanf(f, "%lf", &avg_5minutes)) avg_5minutes = 0;
     if (!fscanf(f, "%lf", &avg_15minutes)) avg_15minutes = 0;
 
-    avgUsage -> avg_minute = avg_minute;
-    avgUsage -> avg_5minutes = avg_5minutes;
-    avgUsage -> avg_15minutes = avg_15minutes;
+    avgUsage->avg_minute = avg_minute;
+    avgUsage->avg_5minutes = avg_5minutes;
+    avgUsage->avg_15minutes = avg_15minutes;
 
     fclose(f);
 
@@ -125,12 +126,12 @@ avgCPUUsage *getLoadAvg () {
 // Parses /proc/[pid]/status and gets actual process name, ppid and state
 // returns pointer on structure "status"
 
-status* parseStatus(const char* pid) {
+status *parseStatus(const char *pid) {
 
     FILE *f = NULL;
-    status* stat = (status*) calloc(1, sizeof(status));
+    status *stat = (status *) calloc(1, sizeof(status));
 
-    char *fullpath = (char*) calloc(256, sizeof(char));
+    char *fullpath = (char *) calloc(256, sizeof(char));
 
     strcpy(fullpath, PROC_PATH);
     strcat(fullpath, "/");
@@ -140,11 +141,11 @@ status* parseStatus(const char* pid) {
 
     if (!(f = fopen(fullpath, "r"))) return NULL;
 
-    char* name = (char*) calloc(100, sizeof(char));
+    char *name = (char *) calloc(100, sizeof(char));
 
     fgets(name, 100, f);
 
-    char* parsedName = (char*) calloc(100, sizeof(char));
+    char *parsedName = (char *) calloc(100, sizeof(char));
 
     for (size_t i = 6; i < strlen(name) - 1; i++) {
 
@@ -153,8 +154,8 @@ status* parseStatus(const char* pid) {
     }
 
     parsedName[strlen(name) - 7] = '\0';
-    stat -> name = (char*) calloc(1, strlen(parsedName) + 1);
-    strcpy(stat -> name, parsedName);
+    stat->name = (char *) calloc(1, strlen(parsedName) + 1);
+    strcpy(stat->name, parsedName);
 
     free(parsedName);
     free(name);
@@ -162,8 +163,8 @@ status* parseStatus(const char* pid) {
 
     if (!(f = fopen(fullpath, "r"))) return NULL;
 
-    char buffer[10];
-    const char* token = "PPid:";
+    char buffer[20];
+    const char *token = "PPid:";
     unsigned long ppid = 0;
 
     while (fgets(buffer, sizeof(buffer), f)) {
@@ -177,12 +178,12 @@ status* parseStatus(const char* pid) {
 
     }
 
-    stat -> ppid = (int) ppid;
+    stat->ppid = (int) ppid;
     fclose(f);
 
     if (!(f = fopen(fullpath, "r"))) return NULL;
 
-    const char* token_1 = "State:";
+    const char *token_1 = "State:";
     char state = 'U';
 
     while (fgets(buffer, sizeof(buffer), f)) {
@@ -196,13 +197,13 @@ status* parseStatus(const char* pid) {
 
     }
 
-    stat -> state = state;
+    stat->state = state;
 
     fclose(f);
 
     if (!(f = fopen(fullpath, "r"))) return NULL;
 
-    const char* token_2 = "Uid:";
+    const char *token_2 = "Uid:";
     int uid = 0;
 
     while (fgets(buffer, sizeof(buffer), f)) {
@@ -216,8 +217,8 @@ status* parseStatus(const char* pid) {
 
     }
 
-    stat -> user = (char*) calloc (100, sizeof(char));
-    strcpy(stat -> user, getpwuid(uid) -> pw_name);
+    stat->user = (char *) calloc(100, sizeof(char));
+    strcpy(stat->user, getpwuid(uid)->pw_name);
 
     free(fullpath);
     fclose(f);
@@ -229,11 +230,11 @@ status* parseStatus(const char* pid) {
 // Parses /proc/[pid]/stat file and gets utime, stime and starttime
 // returns pointer on structure "stat"
 
-stat* parseStat(const char* pid) {
+stat *parseStat(const char *pid) {
 
     FILE *f = NULL;
-    stat* stats = (stat*) calloc(1, sizeof(stat));
-    char *fullpath = (char*) calloc(256, sizeof(char));
+    stat *stats = (stat *) calloc(1, sizeof(stat));
+    char *fullpath = (char *) calloc(256, sizeof(char));
 
     strcpy(fullpath, PROC_PATH);
     strcat(fullpath, "/");
@@ -243,12 +244,13 @@ stat* parseStat(const char* pid) {
 
     if (!(f = fopen(fullpath, "r"))) return NULL;
 
-    char* name = (char*) calloc(100, sizeof(char));
+    char *name = (char *) calloc(100, sizeof(char));
     unsigned long utime_ticks = 1,
-    stime_ticks = 1,
-    cutime_ticks = 1,
-    cstime_ticks = 1,
-    starttime_ticks = 1;
+            stime_ticks = 1,
+            cutime_ticks = 1,
+            cstime_ticks = 1,
+            starttime_ticks = 1,
+            nice = 0;
 
     for (int i = 0; i < 25; i++) {
 
@@ -260,15 +262,17 @@ stat* parseStat(const char* pid) {
         else if (i == 14) stime_ticks = strtol(name, &end, 10);
         else if (i == 15) cutime_ticks = strtol(name, &end, 10);
         else if (i == 16) cstime_ticks = strtol(name, &end, 10);
+        else if (i == 18) nice = strtol(name, &end, 10);
         else if (i == 21) starttime_ticks = strtol(name, &end, 10);
 
     }
 
-    stats -> stime = (double) stime_ticks;
-    stats -> utime = (double) utime_ticks;
-    stats -> cutime = (double) cutime_ticks;
-    stats -> cstime = (double) cstime_ticks;
-    stats -> starttime = (double) starttime_ticks;
+    stats->stime = (double) stime_ticks;
+    stats->utime = (double) utime_ticks;
+    stats->cutime = (double) cutime_ticks;
+    stats->cstime = (double) cstime_ticks;
+    stats->starttime = (double) starttime_ticks;
+    stats->nice = (int) nice;
 
     free(fullpath);
     free(name);
@@ -280,20 +284,19 @@ stat* parseStat(const char* pid) {
 
 double calculateProcessCPUUsage(stat *stats) {
 
-    double totalTime = stats -> utime + stats -> stime;
-    totalTime += stats -> cutime + stats -> cstime;
+    double totalTime = stats->utime + stats->stime;
+    totalTime += stats->cutime + stats->cstime;
     double SECONDS_PER_CLOCKS = (double) sysconf(_SC_CLK_TCK);
-    double seconds = getUptime() - (stats -> starttime / SECONDS_PER_CLOCKS);
+    double seconds = getUptime() - (stats->starttime / SECONDS_PER_CLOCKS);
 
     return 100 * ((totalTime / SECONDS_PER_CLOCKS) / seconds);
 
 }
 
-double calculateProcessMemoryUsage (double residentMem, unsigned long totalMemory) {
+double calculateProcessMemoryUsage(double residentMem, unsigned long totalMemory) {
 
     unsigned PAGESIZE = sysconf(_SC_PAGESIZE);
     double PAGESIZE_KB = (double) PAGESIZE / ONE_K;
-
 
     residentMem *= PAGESIZE_KB;
 
@@ -301,19 +304,19 @@ double calculateProcessMemoryUsage (double residentMem, unsigned long totalMemor
 
 }
 
-double calculateMemoryUsage (memory *mem) {
+double calculateMemoryUsage(memory *mem) {
 
     if (mem == NULL) return 0;
 
-    return (double)(mem -> total - mem -> available) / (double) mem -> total * 100.;
+    return (double) (mem->total - mem->available) / (double) mem->total * 100.;
 
 }
 
-char* parseCommand(const char* pid) {
+char *parseCommand(const char *pid) {
 
     FILE *f = NULL;
-    char *command = (char*) calloc(128, sizeof(char));
-    char *fullpath = (char*) calloc(256, sizeof(char));
+    char *command = (char *) calloc(128, sizeof(char));
+    char *fullpath = (char *) calloc(128, sizeof(char));
 
     strcpy(fullpath, PROC_PATH);
     strcat(fullpath, "/");
@@ -321,28 +324,29 @@ char* parseCommand(const char* pid) {
     strcat(fullpath, "/");
     strcat(fullpath, "cmdline");
 
-    if (!(f = fopen(fullpath, "r"))) return NULL;
+    if (!(f = fopen(fullpath, "r"))) {
+        free(command);
+        free(fullpath);
+        return NULL;
+    }
 
     fgets(command, 128, f);
 
-    for (int i = 0; i < strlen(command); i++) {
+    for (int i = 0; i < (int) strlen(command); i++) {
 
         if (command[i] > 240 || command[i] < 32) {
 
-            command = (char *) calloc(128, sizeof(char));
-
-            strcpy(command, " ");
-            break;
+            free(command);
+            free(fullpath);
+            return NULL;
 
         }
 
     }
 
-    for (int i = 0; i < strlen(command); i++) {
-
-        if (command[i] == '\n') command[i] = ' ';
-
-    }
+    for (int i = 0; i < (int) strlen(command); i++)
+        if (command[i] == '\n')
+            command[i] = ' ';
 
     command[strlen(command)] = '\0';
 
@@ -356,106 +360,33 @@ char* parseCommand(const char* pid) {
 time *processUptime(double up) {
 
     int uptime = (int) up;
-    time *t = (time*) calloc(1, sizeof(time));
+    time *t = (time *) calloc(1, sizeof(time));
 
-    t -> hours = (int) uptime / 3600;
+    t->hours = (int) uptime / 3600;
     uptime = uptime % 3600;
-    t -> minutes = (int) uptime / 60;
+    t->minutes = (int) uptime / 60;
     uptime = uptime % 60;
-    t -> seconds = uptime;
+    t->seconds = uptime;
 
     return t;
-
-}
-
-// Prints all processes in stdout
-
-void printProcesses (processes *proc) {
-
-    printf("| %-25s | %-8s | %-8s | %-8s | %-8s | %-8s | %-40s | %-70s |\n",
-           "USER",
-           "PID",
-           "PPID",
-           "STATE",
-           "CPU",
-           "MEM",
-           "NAME",
-           "COMMAND");
-
-    for (int i = 0; i < proc -> n; i++) {
-
-        printf("| %-25s | %-8d | %-8d | %-8c | %-5.2lf%%%-2s | %-5.2lf%%%-2s | %-40s | %-70s |\n",
-               proc -> processes[i].process_user,
-               proc -> processes[i].process_id,
-               proc -> processes[i].process_ppid,
-               proc -> processes[i].process_state,
-               proc -> processes[i].cpu_usage,
-               "",
-               proc -> processes[i].mem_usage,
-               "",
-               proc -> processes[i].process_name,
-               proc -> processes[i].process_command);
-
-    }
-
-}
-
-// Prints info about memory
-
-void printMemory (memory *mem) {
-
-    printf("MEMORY: TOTAL: %lukB FREE: %lukB AVAILABLE: %lukB PERCENTAGE: %lf%%\n",
-           mem -> total,
-           mem -> free,
-           mem -> available,
-           (double)(mem -> total - mem -> available) / (double) mem -> total * 100.);
-
-}
-
-void printCPU (cpuinfo *CPU) {
-
-    printf("CPU USAGE: %lf %%\n", CPU -> usage);
-
-}
-
-void printLoadAvg (avgCPUUsage *avgUsage) {
-
-    printf("LOAD_AVG: %lf, %lf, %lf\n",
-           avgUsage -> avg_minute,
-           avgUsage -> avg_5minutes,
-           avgUsage -> avg_15minutes);
-
-}
-
-void printUptime(double uptime) {
-
-    time *up = processUptime(uptime);
-
-    printf("UPTIME: %02d:%02d:%02d\n",
-           up -> hours,
-           up -> minutes,
-           up -> seconds);
-
-}
-
-void printThreads (int threads) {
-
-    printf("THREADS: %d\n", threads);
 
 }
 
 // Gets actual info about memory
 // returns pointer on structure "memory"
 
-memory* getMemory() {
+memory *getMemory() {
 
     FILE *f = NULL;
-    memory *mem = (memory*) calloc(1, sizeof(memory));
+    memory *mem = (memory *) calloc(1, sizeof(memory));
     char buffer[512];
 
-    if (!(f = fopen("/proc/meminfo", "r"))) return NULL;
+    if (!(f = fopen("/proc/meminfo", "r"))) {
+        free(mem);
+        return NULL;
+    }
 
-    const char* token_1 = "MemTotal:";
+    const char *token_1 = "MemTotal:";
     unsigned long total = 0;
 
     while (fgets(buffer, sizeof(buffer), f)) {
@@ -469,7 +400,7 @@ memory* getMemory() {
 
     }
 
-    const char* token_2 = "MemFree:";
+    const char *token_2 = "MemFree:";
     unsigned long free = 0;
 
     while (fgets(buffer, sizeof(buffer), f)) {
@@ -483,7 +414,7 @@ memory* getMemory() {
 
     }
 
-    const char* token_3 = "MemAvailable:";
+    const char *token_3 = "MemAvailable:";
     unsigned long available = 0;
 
     while (fgets(buffer, sizeof(buffer), f)) {
@@ -497,9 +428,9 @@ memory* getMemory() {
 
     }
 
-    mem -> total = total;
-    mem -> free = free;
-    mem -> available = available;
+    mem->total = total;
+    mem->free = free;
+    mem->available = available;
 
     fclose(f);
 
@@ -510,59 +441,70 @@ memory* getMemory() {
 // Main function that construct processes using parsers
 // returns pointer on structure "processes"
 
-processes* getProcesses () {
+processes *getProcesses() {
 
     struct dirent **nameList;
     int n = scandir(PROC_PATH, &nameList, 0, NULL);
     int process_amount = 0;
-    process *_processes = (process*) calloc(n, sizeof(process));
+    process *_processes = (process *) calloc(n, sizeof(process));
 
     for (int i = 0; i < n; i++) {
 
-        if (strcmp(nameList[i] -> d_name, ".") != 0 && strcmp(nameList[i] -> d_name, "..") != 0) {
+        if (strcmp(nameList[i]->d_name, ".") != 0 && strcmp(nameList[i]->d_name, "..") != 0) {
 
             char *end;
-            int pid = (int) strtol(nameList[i] -> d_name, &end, 10);
+            int pid = (int) strtol(nameList[i]->d_name, &end, 10);
 
             if (pid == 0) continue;
 
             _processes[process_amount].process_id = pid;
-            status *_status = parseStatus(nameList[i] -> d_name);
-            stat *_stat = parseStat(nameList[i] -> d_name);
+            status *_status = parseStatus(nameList[i]->d_name);
+            stat *_stat = parseStat(nameList[i]->d_name);
             if (_stat == NULL || _status == NULL) continue;
-            strcpy(_processes[process_amount].process_name, _status -> name);
-            strcpy(_processes[process_amount].process_user, _status -> user);
-            _processes[process_amount].process_ppid = _status -> ppid;
-            _processes[process_amount].process_state = _status -> state;
-            char *command= parseCommand(nameList[i] -> d_name);
+            strcpy(_processes[process_amount].process_name, _status->name);
+            strcpy(_processes[process_amount].process_user, _status->user);
+            _processes[process_amount].process_ppid = _status->ppid;
+            _processes[process_amount].process_state = _status->state;
+            char *command = parseCommand(nameList[i]->d_name);
             if (command) {
-                strcpy(_processes[process_amount].process_command, parseCommand(nameList[i]->d_name));
+                strcpy(_processes[process_amount].process_command, command);
             }
             _processes[process_amount].cpu_usage = calculateProcessCPUUsage(_stat);
+            _processes[process_amount].process_nice = _stat->nice;
+            memory *mem = getMemory();
             _processes[process_amount].mem_usage = calculateProcessMemoryUsage(
-                    (double) getResidentMemory(nameList[i] -> d_name), getMemory() -> total);
+                    (double) getResidentMemory(nameList[i]->d_name), mem->total);
             process_amount++;
+            free(_status->name);
+            free(_status->user);
+            free(_status);
+            free(_stat);
+            free(mem);
+            free(command);
 
         }
 
+        free(nameList[i]);
+
     }
 
-    processes *proc = (processes*) calloc(1, sizeof(processes));
+    processes *proc = (processes *) calloc(1, sizeof(processes));
+    proc->processes = _processes;
+    proc->n = process_amount;
 
-    proc -> processes = _processes;
-    proc -> n = process_amount;
+    free(nameList);
 
     return proc;
 }
 
 cpu *parseCpu() {
 
-    cpu *CPU = (cpu*) calloc (1, sizeof(cpu));
+    cpu *CPU = (cpu *) calloc(1, sizeof(cpu));
     FILE *f = NULL;
-    char *buf = (char*) calloc(128, sizeof(char));
+    char *buf = (char *) calloc(128, sizeof(char));
     int total_1 = 0,
-    running_1 = 0,
-    buff = 0;
+            running_1 = 0,
+            buff = 0;
 
     if (!(f = fopen("/proc/stat", "r"))) return NULL;
 
@@ -579,28 +521,30 @@ cpu *parseCpu() {
 
     }
 
-    CPU -> running = (double) running_1;
-    CPU -> total = (double) total_1;
+    CPU->running = (double) running_1;
+    CPU->total = (double) total_1;
 
+    free(buf);
     fclose(f);
 
     return CPU;
 
 }
 
-cpuinfo *getCpu () {
+cpuinfo *getCpu() {
 
-    cpuinfo *CPU = (cpuinfo*) calloc(1, sizeof(cpuinfo));
+    cpuinfo *CPU = (cpuinfo *) calloc(1, sizeof(cpuinfo));
     cpu *CPU1 = parseCpu();
     usleep(TIME_SNAPSHOT * 1000);
     cpu *CPU2 = parseCpu();
 
     if (CPU1 == NULL || CPU2 == NULL) return NULL;
 
-    CPU -> snapshot1 = CPU1;
-    CPU -> snapshot2 = CPU2;
-    if ((double)(CPU -> snapshot2 -> total - CPU -> snapshot1 -> total) == 0) return 0;
-    CPU -> usage = (double)(CPU -> snapshot2 -> running - CPU -> snapshot1 -> running) / (double)(CPU -> snapshot2 -> total - CPU -> snapshot1 -> total) * 100;
+    CPU->snapshot1 = CPU1;
+    CPU->snapshot2 = CPU2;
+    if ((double) (CPU->snapshot2->total - CPU->snapshot1->total) == 0) return 0;
+    CPU->usage = (double) (CPU->snapshot2->running - CPU->snapshot1->running) /
+                 (double) (CPU->snapshot2->total - CPU->snapshot1->total) * 100;
     return CPU;
 
 }
@@ -609,7 +553,7 @@ int getRunningProcesses(processes *proc) {
 
     int n = 0;
 
-    for (int i = 0; i < proc -> n; i++) if (proc -> processes[i].process_state == 'R') n++;
+    for (int i = 0; i < proc->n; i++) if (proc->processes[i].process_state == 'R') n++;
 
     return n;
 

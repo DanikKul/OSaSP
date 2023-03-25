@@ -5,7 +5,7 @@
 #ifndef TASK_MANAGER_GRAPHICS_H
 #define TASK_MANAGER_GRAPHICS_H
 
-#include <ncursesw/ncurses.h>
+#include <ncurses.h>
 #include <signal.h>
 #include "../processes/processes.h"
 #include "../utils/utils.h"
@@ -38,7 +38,8 @@ s_ppid = 1,                         // Ascending/descending ppid sort flag
 s_state = 1,                        // Ascending/descending state sort flag
 s_cpu = 0,                          // Ascending/descending cpu sort flag
 s_mem = 0,                          // Ascending/descending mem sort flag
-s_name = 1;                         // Ascending/descending name sort flag
+s_name = 1,                         // Ascending/descending name sort flag
+s_nice = 0;                         // Ascending/descending nice sort flag
 
 //// Function that chooses sort method (used in main loop)
 void sortProcess(processes *proc, int ch) {
@@ -52,10 +53,12 @@ void sortProcess(processes *proc, int ch) {
     } else if (ch == 'r') {
         sortByState(proc, s_state);     // state sort
     } else if (ch == 't') {
-        sortByCPU(proc, s_cpu);         // cpu sort
+        sortByNice(proc, s_nice);       // nice sort
     } else if (ch == 'y') {
-        sortByMem(proc, s_mem);         // memory sort
+        sortByCPU(proc, s_cpu);         // cpu sort
     } else if (ch == 'u') {
+        sortByMem(proc, s_mem);         // memory sort
+    } else if (ch == 'i') {
         sortByName(proc, s_name);       // name sort
     }
 
@@ -97,7 +100,7 @@ void updateMemoryUsage(double mem_usage) {
     sprintf(percent, "%.1lf", mem_usage);
     percent[strlen(percent)] = '%';
     percent[strlen(percent) + 1] = '\0';
-    mvwprintw(win, 4, strlen(line) + 15, "%6s] ", percent);
+    mvwprintw(win, 4, (int) strlen(line) + 15, "%6s] ", percent);
     free(percent);
     free(line);
 }
@@ -122,7 +125,7 @@ void updateCpuUsage(cpuinfo *cpu_usage) {
     sprintf(percent, "%.1lf", cpu_usage -> usage);
     percent[strlen(percent)] = '%';
     percent[strlen(percent) + 1] = '\0';
-    mvwprintw(win, 2, strlen(line) + 15, "%6s] ", percent);
+    mvwprintw(win, 2, (int) strlen(line) + 15, "%6s] ", percent);
     free(percent);
     free(line);
 }
@@ -192,6 +195,9 @@ void renderProcesses(processes *PROCESSES) {
     sprintf(buff, "%-7s ", "STATE");
     strcat(params, buff);
 
+    sprintf(buff, "%-7s ", "NICE");
+    strcat(params, buff);
+
     if (CPU_LIMIT < getmaxx(inner) - 2) {                   // Check if CPU column fits inner window
         sprintf(buff, "%-8s ", "CPU");
         strcat(params, buff);
@@ -240,32 +246,35 @@ void renderProcesses(processes *PROCESSES) {
         mvwprintw(inner, i + 2, 17, "%-8d ", PROCESSES -> processes[i + start_position].process_id);
         mvwprintw(inner, i + 2, 26, "%-8d ", PROCESSES -> processes[i + start_position].process_ppid);
         mvwprintw(inner, i + 2, 35, "%-7c ", PROCESSES -> processes[i + start_position].process_state);
+        mvwprintw(inner, i + 2, 43, "%-8d ", PROCESSES -> processes[i + start_position].process_nice);
 
         // Check if cpu column fits in inner window
 
-        if (CPU_LIMIT < getmaxx(inner) - 2) mvwprintw(inner, i + 2, 43, "%-5.2lf%%%-2s ",
+        if (CPU_LIMIT < getmaxx(inner) - 2) mvwprintw(inner, i + 2, 51, "%-5.2lf%%%-2s ",
                                                       PROCESSES -> processes[i + start_position].cpu_usage, "");
 
         // Check if memory column fits in inner window
 
-        if (MEM_LIMIT < getmaxx(inner) - 2) mvwprintw(inner, i + 2, 52, "%-5.2lf%%%-2s ",
+        if (MEM_LIMIT < getmaxx(inner) - 2) mvwprintw(inner, i + 2, 60, "%-5.2lf%%%-2s ",
                                                       PROCESSES -> processes[i + start_position].mem_usage, "");
 
         // Check if name column fits in inner window
 
-        if (NAME_LIMIT < getmaxx(inner) - 2) mvwprintw(inner, i + 2, 61, "%-30s ",
+        if (NAME_LIMIT < getmaxx(inner) - 2) mvwprintw(inner, i + 2, 69, "%-30s ",
                                                        PROCESSES -> processes[i + start_position].process_name);
 
         // Check if command column fits in inner window
 
         if (COMMAND_LIMIT < getmaxx(inner) - 2) {
-            mvwprintw(inner, i + 2, 92, "%-90.90s ",
+            mvwprintw(inner, i + 2, 100, "%-90.90s ",
                       PROCESSES->processes[i + start_position].process_command);
-            mvwprintw(inner, i + 2, 92 + 90, "%50s", " ");
+            mvwprintw(inner, i + 2, 100 + 90, "%50s", " ");
         }
         if (i == cursor_position) wattroff(inner, COLOR_PAIR(BUTTON));
     }
     box(inner, 0, 0);       // Draws a box around inner window
+    free(params);
+    free(buff);
 }
 
 //// Function that clears inner and outer window and writes help window (Rendering + Docs function)
@@ -295,23 +304,24 @@ void helpWindow () {
     mvwprintw(win, 11, 10, "PID - process id");
     mvwprintw(win, 12, 10, "PPID - parent process id");
     mvwprintw(win, 13, 10, "STATE - state of a process ('R' - RUNNING, 'D' - UNINTERRUPTIBLE SLEEP, 'S' - INTERRUPTABLE SLEEP, 'T' - STOPPED, 'Z' - ZOMBIE, 'I' - IDLE)");
-    mvwprintw(win, 14, 10, "CPU - CPU time usage");
-    mvwprintw(win, 15, 10, "MEM - memory usage");
-    mvwprintw(win, 16, 10, "NAME - process name");
-    mvwprintw(win, 17, 10, "COMMAND - command that started process");
-    printAttr("CONTROLS", 19, 5, COLOR_PAIR(HIGH));
-    printAttr("KEYBOARD", 21, 10, COLOR_PAIR(MAGENTA));
-    mvwprintw(win, 23, 15, "F1 - OPENS HELP WINDOW    'q' - SORTS BY USER     'y' - SORTS BY MEMORY");
-    mvwprintw(win, 24, 15, "F2 - KILLS PROCESS        'w' - SORTS BY PID      'u' - SORTS BY NAME");
-    mvwprintw(win, 25, 15, "F3 - STOPS PROCESS        'e' - SORTS BY PPID");
-    mvwprintw(win, 26, 15, "F4 - CONTINUES PROCESS    'r' - SORTS BY STATE");
-    mvwprintw(win, 27, 15, "F5 - EXIT                 't' - SORTS BY CPU");
-    printAttr("MOUSE", 29, 10, COLOR_PAIR(MAGENTA));
-    mvwprintw(win, 31, 15, "MOUSE SCROLL - scrolling processes");
-    mvwprintw(win, 31, 15, "LEFT MOUSE BUTTON - selecting processes / choosing sorts / choosing actions");
-    printAttr("ACTION PANEL", 33, 5, COLOR_PAIR(HIGH));
-    mvwprintw(win, 35, 10, "Action panel shows last clicked process / last sort you applied / last action you clicked");
-    printAttr("PRESS ANY KEY TO CONTINUE", 38, 5, COLOR_PAIR(MIDDLE));
+    mvwprintw(win, 14, 10, "NICE- shows priority of a process");
+    mvwprintw(win, 15, 10, "CPU - CPU time usage");
+    mvwprintw(win, 16, 10, "MEM - memory usage");
+    mvwprintw(win, 17, 10, "NAME - process name");
+    mvwprintw(win, 18, 10, "COMMAND - command that started process");
+    printAttr("CONTROLS", 20, 5, COLOR_PAIR(HIGH));
+    printAttr("KEYBOARD", 22, 10, COLOR_PAIR(MAGENTA));
+    mvwprintw(win, 24, 15, "F1 - OPENS HELP WINDOW    'q' - SORTS BY USER     'y' - SORTS BY CPU");
+    mvwprintw(win, 25, 15, "F2 - KILLS PROCESS        'w' - SORTS BY PID      'u' - SORTS BY MEMORY");
+    mvwprintw(win, 26, 15, "F3 - STOPS PROCESS        'e' - SORTS BY PPID     'i' - SORTS BY NAME");
+    mvwprintw(win, 27, 15, "F4 - CONTINUES PROCESS    'r' - SORTS BY STATE");
+    mvwprintw(win, 28, 15, "F5 - EXIT                 't' - SORTS BY NICE");
+    printAttr("MOUSE", 30, 10, COLOR_PAIR(MAGENTA));
+    mvwprintw(win, 32, 15, "MOUSE SCROLL - scrolling processes");
+    mvwprintw(win, 33, 15, "LEFT MOUSE BUTTON - selecting processes / choosing sorts / choosing actions");
+    printAttr("ACTION PANEL", 35, 5, COLOR_PAIR(HIGH));
+    mvwprintw(win, 37, 10, "Action panel shows last clicked process / last sort you applied / last action you clicked");
+    printAttr("PRESS ANY KEY TO CONTINUE", 40, 5, COLOR_PAIR(MIDDLE));
     wrefresh(stdscr); // Refresh stdscr
     wrefresh(win); // Refresh outer window
     getch(); // Get any input
@@ -324,6 +334,11 @@ void helpWindow () {
     box(win, 0, 0); // Draws a box around outer window
     box(inner, 0, 0); // Draws a box around inner window
 
+}
+
+void freeProcesses(processes *proc) {
+    free(proc->processes);
+    free(proc);
 }
 
 //// Function that runs application (Common + Rendering function)
@@ -362,7 +377,7 @@ void run () {
     init_pair(DEFAULT, COLOR_WHITE, COLOR_BLACK);
     assume_default_colors(COLOR_WHITE, COLOR_BLACK);
 
-    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
+    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
 
     int flag = 'w'; // Default sort is PID sort
 
@@ -396,136 +411,150 @@ void run () {
             helpWindow();
         } else if (ch == KEY_F(2)) {
             kill(PROCESSES -> processes[chosen].process_id, SIGKILL); // kills process
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: KILL proc: %d", PROCESSES -> processes[chosen].process_id);
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: KILL proc: %d", PROCESSES -> processes[chosen].process_id);
         } else if (ch == KEY_F(3)) {
             kill(PROCESSES -> processes[chosen].process_id, SIGSTOP); // stops process
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: STOP proc: %d", PROCESSES -> processes[chosen].process_id);
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: STOP proc: %d", PROCESSES -> processes[chosen].process_id);
         } else if (ch == KEY_F(4)) {
             kill(PROCESSES -> processes[chosen].process_id, SIGCONT); // continue stopped process
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: CONTINUE proc: %d", PROCESSES -> processes[chosen].process_id);
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: CONTINUE proc: %d", PROCESSES -> processes[chosen].process_id);
         } else if (ch == 'q') {
             // user sort
             flag = 'q';
             s_user = !s_user;
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY USER");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY USER");
             start_position = 0, cursor_position = 0, chosen = 0;
         } else if (ch == 'w') {
             // pid sort
             flag = 'w';
             s_pid = !s_pid;
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY PID");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY PID");
             start_position = 0, cursor_position = 0, chosen = 0;
         } else if (ch == 'e') {
             // ppid sort
             flag = 'e';
             s_ppid = !s_ppid;
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY PPID");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY PPID");
             start_position = 0, cursor_position = 0, chosen = 0;
         } else if (ch == 'r') {
             // state sort
             flag = 'r';
             s_state = !s_state;
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY STATE");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY STATE");
             start_position = 0, cursor_position = 0, chosen = 0;
         } else if (ch == 't') {
-            // cpu sort
+            // nice sort
             flag = 't';
-            s_cpu = !s_cpu;
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY CPU");
+            s_nice = !s_nice;
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY NICE");
             start_position = 0, cursor_position = 0, chosen = 0;
         } else if (ch == 'y') {
-            // mem sort
+            // cpu sort
             flag = 'y';
-            s_mem = !s_mem;
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY MEM");
+            s_cpu = !s_cpu;
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY CPU");
             start_position = 0, cursor_position = 0, chosen = 0;
         } else if (ch == 'u') {
-            // name sort
+            // mem sort
             flag = 'u';
+            s_mem = !s_mem;
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY MEM");
+            start_position = 0, cursor_position = 0, chosen = 0;
+        } else if (ch == 'i') {
+            // name sort
+            flag = 'i';
             s_name = !s_name;
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-            mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY NAME");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+            mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY NAME");
             start_position = 0, cursor_position = 0, chosen = 0;
         } else if (getmouse(&event) == OK) { // If mouse event then
             if (event.bstate & BUTTON1_CLICKED) { // If LMB clicked
-                mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-25s", "");
+                mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-25s", "");
                 if (event.y - 8 >= 0 && event.y - 8 < max_list) {
                     cursor_position = event.y - 8;
                     chosen = cursor_position + start_position;
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: PRESSED ON %d", PROCESSES -> processes[chosen].process_id);
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: PRESSED ON %d", PROCESSES -> processes[chosen].process_id);
                 } else if (event.y == height - 2 && event.x >= 3 && event.x <= 9) { // Open HELP window
                     helpWindow();
                 } else if (event.y == height - 2 && event.x >= 11 && event.x <= 17) {
                     kill(PROCESSES -> processes[chosen].process_id, SIGKILL); // kills process
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: KILL proc: %d", PROCESSES -> processes[chosen].process_id);
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: KILL proc: %d", PROCESSES -> processes[chosen].process_id);
                 } else if (event.y == height - 2 && event.x >= 19 && event.x <= 25) {
                     kill(PROCESSES -> processes[chosen].process_id, SIGSTOP); // stops process
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: STOP proc: %d", PROCESSES -> processes[chosen].process_id);
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: STOP proc: %d", PROCESSES -> processes[chosen].process_id);
                 } else if (event.y == height - 2 && event.x >= 27 && event.x <= 37) {
                     kill(PROCESSES -> processes[chosen].process_id, SIGCONT); // continues stopped process
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: CONTINUE proc: %d", PROCESSES -> processes[chosen].process_id);
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: CONTINUE proc: %d", PROCESSES -> processes[chosen].process_id);
                 } else if (event.y == height - 2 && event.x >= 39 && event.x <= 45) { // exit
                     break;
                 } else if (event.y == 7 && event.x >= 3 && event.x <= 18) {
                     // user sort
                     flag = 'q';
                     s_user = !s_user;
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY USER");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY USER");
                     start_position = 0, cursor_position = 0, chosen = 0;
                 } else if (event.y == 7 && event.x >= 19 && event.x <= 27) {
                     // pid sort
                     flag = 'w';
                     s_pid = !s_pid;
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY PID");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY PID");
                     start_position = 0, cursor_position = 0, chosen = 0;
                 } else if (event.y == 7 && event.x >= 28 && event.x <= 36) {
                     // ppid sort
                     flag = 'e';
                     s_ppid = !s_ppid;
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY PPID");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY PPID");
                     start_position = 0, cursor_position = 0, chosen = 0;
                 } else if (event.y == 7 && event.x >= 37 && event.x <= 44) {
                     // state sort
                     flag = 'r';
                     s_state = !s_state;
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY STATE");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY STATE");
                     start_position = 0, cursor_position = 0, chosen = 0;
-                } else if (event.y == 7 && event.x >= 45 && event.x <= 53) {
-                    // cpu sort
+                } else if (event.y == 7 && event.x >= 45 && event.x <= 52) {
+                    // nice sort
                     flag = 't';
-                    s_cpu = !s_cpu;
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY CPU");
+                    s_nice = !s_nice;
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY NICE");
                     start_position = 0, cursor_position = 0, chosen = 0;
-                } else if (event.y == 7 && event.x >= 54 && event.x <= 62) {
-                    // mem sort
+                }  else if (event.y == 7 && event.x >= 53 && event.x <= 61) {
+                    // cpu sort
                     flag = 'y';
-                    s_mem = !s_mem;
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY MEM");
+                    s_cpu = !s_cpu;
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY CPU");
                     start_position = 0, cursor_position = 0, chosen = 0;
-                } else if (event.y == 7 && event.x >= 63 && event.x <= 93) {
-                    // name sort
+                } else if (event.y == 7 && event.x >= 62 && event.x <= 70) {
+                    // mem sort
                     flag = 'u';
+                    s_mem = !s_mem;
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY MEM");
+                    start_position = 0, cursor_position = 0, chosen = 0;
+                } else if (event.y == 7 && event.x >= 71 && event.x <= 101) {
+                    // name sort
+                    flag = 'i';
                     s_name = !s_name;
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION:%-20s", "");
-                    mvwprintw(win, height - 2, (int)width * 0.8, "ACTION: SORTED BY NAME");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
+                    mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: SORTED BY NAME");
                     start_position = 0, cursor_position = 0, chosen = 0;
                 }
             } else if (event.bstate & BUTTON5_PRESSED) { // Move cursor down
@@ -539,7 +568,7 @@ void run () {
         flushinp(); // Clear input (without that function getch and wgetch work slowly)
         wrefresh(win); // Refresh outer window
         wrefresh(inner); // Refresh inner window
-        free(PROCESSES);
+        freeProcesses(PROCESSES);
     }
     endwin(); // Safe exit application
 }

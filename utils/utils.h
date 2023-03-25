@@ -38,6 +38,10 @@ int cmpMem (const process *proc1, const process *proc2) {
     return proc1 -> mem_usage < proc2 -> mem_usage;
 }
 
+int cmpNice (const process *proc1, const process *proc2) {
+    return proc1 -> process_nice < proc2 -> process_nice;
+}
+
 void sortByUser (processes *proc, int ascending) {
     for (int i = 0; i < proc -> n; i++) {
         for (int j = 0; j < proc -> n; j++) {
@@ -120,6 +124,19 @@ void sortByName (processes *proc, int ascending) {
     for (int i = 0; i < proc -> n; i++) {
         for (int j = 0; j < proc -> n; j++) {
             int cmp = cmpName(&(proc -> processes[i]), &(proc -> processes[j]));
+            if (ascending * cmp + !ascending * !cmp) {
+                process buff = proc -> processes[i];
+                proc -> processes[i] = proc -> processes[j];
+                proc -> processes[j] = buff;
+            }
+        }
+    }
+}
+
+void sortByNice (processes *proc, int ascending) {
+    for (int i = 0; i < proc -> n; i++) {
+        for (int j = 0; j < proc -> n; j++) {
+            int cmp = cmpNice(&(proc -> processes[i]), &(proc -> processes[j]));
             if (ascending * cmp + !ascending * !cmp) {
                 process buff = proc -> processes[i];
                 proc -> processes[i] = proc -> processes[j];
