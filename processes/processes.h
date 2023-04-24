@@ -25,7 +25,6 @@ double getUptime() {
     double uptime = 0;
 
     if (!(f = fopen("/proc/uptime", "r"))) return -1;
-
     if (!fscanf(f, "%lf", &uptime)) return -1;
 
     fclose(f);

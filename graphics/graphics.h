@@ -161,8 +161,8 @@ void printMenu() {
     mvwprintw(win, height - 2, 14, "KILL");
     mvwprintw(win, height - 2, 22, "STOP");
     mvwprintw(win, height - 2, 30, "CONTINUE");
-    mvwprintw(win, height - 2, 42, "EXIT");
-    mvwprintw(win, height - 2, 47, "STATE");
+    mvwprintw(win, height - 2, 42, "SIGNAL");
+    mvwprintw(win, height - 2, 52, "EXIT");
     wattroff(win, COLOR_PAIR(BUTTON));
 
     wattron(win, COLOR_PAIR(DEFAULT));
@@ -171,6 +171,7 @@ void printMenu() {
     mvwprintw(win, height - 2, 19, "F3");
     mvwprintw(win, height - 2, 27, "F4");
     mvwprintw(win, height - 2, 39, "F5");
+    mvwprintw(win, height - 2, 49, "F6");
     wattroff(win, COLOR_PAIR(DEFAULT));
 
 }
@@ -277,6 +278,76 @@ void renderProcesses(processes *PROCESSES) {
     free(buff);
 }
 
+void signalsWindow (processes* PROCESSES) {
+
+    for (int i = 1; i < getmaxx(win) - 1; i++) { // Clear screen
+        clearLine(i);
+    }
+
+    box(win, 0, 0);
+    printAttr("Choose signal:", 1, 5, COLOR_PAIR(LOW));
+    int codes[] = {9, 15, 1, 6, 2, 7, 8, 4, 11, 13,
+                   3, 5, 14, 17, 18, 19, 10, 12};
+    const char* sigs[] = { "",
+            "SIGKILL is sent to a process to terminate it immediately (kill)                                                                                                  ",
+            "SIGTERM is sent to a process when the time limit specified in a call to a preceding alarm setting function (such as setitimer) elapses                           ",
+            "SIGHUP  is sent to a process when its controlling terminal is closed                                                                                             ",
+            "SIGABRT is sent to a process to tell it to abort, i.e. to terminate                                                                                              ",
+            "SIGINT  is sent to a process by its controlling terminal when a user wishes to interrupt the process                                                             ",
+            "SIGBUS  is sent to a process when it causes a bus error                                                                                                          ",
+            "SIGFPE  is sent to a process when an exceptional (but not necessarily erroneous) condition has been detected in the floating point or integer arithmetic hardware",
+            "SIGILL  is sent to a process when it attempts to execute an illegal, malformed, unknown, or privileged instruction                                               ",
+            "SIGSEGV is sent to a process when it makes an invalid virtual memory reference, or segmentation fault, i.e. when it performs a segmentation violation            ",
+            "SIGPIPE is sent to a process when it attempts to write to a pipe without a process connected to the other end                                                    ",
+            "SIGQUIT is sent to a process by its controlling terminal when the user requests that the process quit and perform a core dump                                    ",
+            "SIGTRAP is sent to a process when an exception (or trap) occurs:                                                                                                 ",
+            "SIGALRM is sent to a process when the time limit specified in a call to a preceding alarm setting function (such as setitimer) elapses                           ",
+            "SIGCHLD is sent to a process when a child process terminates, is interrupted, or resumes after being interrupted                                                 ",
+            "SIGCONT instructs the operating system to continue (restart) a process previously paused by the SIGSTOP or SIGTSTP signal                                        ",
+            "SIGSTOP instructs the operating system to stop a process for later resumption                                                                                    ",
+            "SIGUSR1 is sent by user                                                                                                                                          ",
+            "SIGUSR2 is sent by user                                                                                                                                          ",
+            "RETURN"
+    };
+    wrefresh(stdscr);
+    wrefresh(win);
+    wrefresh(inner);
+    nodelay(inner, FALSE);
+    int ch = 1;
+    int choice;
+    while (1) {
+        for (int i = 0; i < 20; i++) {
+            if (ch == i) {
+                printAttr(sigs[i], 5 + i, 5, COLOR_PAIR(BUTTON));
+            } else {
+                printAttr(sigs[i], 5 + i, 5, COLOR_PAIR(MIDDLE));
+            }
+        }
+        wrefresh(inner);
+        choice = wgetch(inner);
+        if (choice == KEY_UP) {
+            if (ch > 1)
+            ch--;
+        } else if (choice == KEY_DOWN) {
+            if (ch < 19)
+            ch++;
+        } else if (choice == 10) {
+            kill(PROCESSES -> processes[chosen].process_id, codes[ch - 1]);
+            break;
+        }
+    }
+
+    for (int i = 1; i < getmaxx(win) - 2; i++) { // Clear screen
+        clearLine(i);
+    }
+
+    box(win, 0, 0); // Draws a box around outer window
+    box(inner, 0, 0); // Draws a box around inner window
+
+    nodelay(inner, TRUE);
+
+}
+
 //// Function that clears inner and outer window and writes help window (Rendering + Docs function)
 
 void helpWindow () {
@@ -344,7 +415,7 @@ void freeProcesses(processes *proc) {
 //// Function that runs application (Common + Rendering function)
 
 void run () {
-
+    system("clear");
     initscr(); // Initialize screen
     getmaxyx(stdscr, height, width); // Get max height and width of terminal
     USAGE_LENGTH = width / 2 - 10; // Calculate optimal bars length
@@ -384,7 +455,7 @@ void run () {
     while (1) {
         max_list = getmaxy(inner) - 3; // Calculate maximal amount of processes that fit in the list
         getmaxyx(stdscr, height, width); // Get max height and width of terminal
-        USAGE_LENGTH = width / 2 - 10; // Recalculte bar length
+        USAGE_LENGTH = width / 2 - 10; // Recalculate bar length
         printMenu(); // Render menu
         processes *PROCESSES = NULL; // Initialize processes
         PROCESSES = getProcesses(); // Update processes
@@ -392,10 +463,6 @@ void run () {
         renderProcesses(PROCESSES); // Put all processes in the list
         updateMemoryUsage(calculateMemoryUsage(getMemory())); // Render memory usage bar
         updateCpuUsage(getCpu()); // Render CPU usage bar
-        mvwprintw(win, height - 2, 53, "CURSOR:%-3d", cursor_position);
-        mvwprintw(win, height - 2, 64, "START:%-3d", start_position);
-        mvwprintw(win, height - 2, 74, "CHOSEN:%-3d", chosen);
-        mvwprintw(win, height - 2, 84, "AMOUNT:%-3d", PROCESSES -> n);
         // Render other characteristics
         updateOverall(getThreads(PROCESSES),getRunningProcesses(PROCESSES),getLoadAvg(),processUptime(getUptime()));
         int ch = wgetch(inner); // Get key
@@ -405,7 +472,7 @@ void run () {
         } else if (ch == KEY_DOWN || ch == KEY_PPAGE) { // Move cursor down
             if (!(cursor_position >= max_list - 1)) cursor_position++;
             updateStartPosition(PROCESSES);
-        } else if (ch == KEY_F(5)) { // Exit
+        } else if (ch == KEY_F(6)) { // Exit
             break;
         } else if (ch == KEY_F(1)) { // Open HELP window
             helpWindow();
@@ -421,6 +488,9 @@ void run () {
             kill(PROCESSES -> processes[chosen].process_id, SIGCONT); // continue stopped process
             mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
             mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: CONTINUE proc: %d", PROCESSES -> processes[chosen].process_id);
+        } else if (ch == KEY_F(5)) {
+            signalsWindow(PROCESSES);
+            flushinp();
         } else if (ch == 'q') {
             // user sort
             flag = 'q';
@@ -498,7 +568,9 @@ void run () {
                     kill(PROCESSES -> processes[chosen].process_id, SIGCONT); // continues stopped process
                     mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION:%-20s", "");
                     mvwprintw(win, height - 2, (int) (width * 0.8), "ACTION: CONTINUE proc: %d", PROCESSES -> processes[chosen].process_id);
-                } else if (event.y == height - 2 && event.x >= 39 && event.x <= 45) { // exit
+                } else if (event.y == height - 2 && event.x >= 39 && event.x <= 48) { // send a specific signal to chosen process
+                    signalsWindow(PROCESSES);
+                } else if (event.y == height - 2 && event.x >= 49 && event.x <= 57) { // exit
                     break;
                 } else if (event.y == 7 && event.x >= 3 && event.x <= 18) {
                     // user sort

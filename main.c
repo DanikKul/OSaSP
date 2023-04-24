@@ -6,10 +6,5 @@
 
 
 int main() {
-//    while (1) {
-//        processes *proc = getProcesses();
-//        free(proc -> processes);
-//        free(proc);
-//    }
     run();
 }
