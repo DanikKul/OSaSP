@@ -7,4 +7,4 @@
 ## [№6 Не выполнена](https://github.com/DanikKul/OSaSP/tree/lab6)
 ## [№7 Не выполнена](https://github.com/DanikKul/OSaSP/tree/lab7)
 ## [№8 Не выполнена](https://github.com/DanikKul/OSaSP/tree/lab8)
-## [Курсовой проект](https://github.com/DanikKul/OSaSP/tree/project)
+## [Курсовой проект "Диспетчер задач на Linux"](https://github.com/DanikKul/OSaSP/tree/project)
