@@ -5,7 +5,6 @@
 
 #include <sys/types.h>
 
-#define BUFFER_SIZE 128
 #define PRODUCERS 128
 #define CONSUMERS 128
 
@@ -17,16 +16,19 @@ typedef struct {
 } msg_t;
 
 typedef struct {
-    size_t put_count;           // счетчик помещенных сообщений
-    size_t pop_count;           // счетчик извлеченных сообщений
+    size_t put_count;
+    size_t pop_count;
 
-    size_t head;                // указывает на индекс головы
-    size_t tail;                // указывает на индекс хвоста
-    size_t size;                // используется для упрощения проверки оставшегося размера
-    msg_t messages[BUFFER_SIZE]; // буфер сообщений
+    size_t head;
+    size_t tail;
+    size_t size;
+    size_t maxsize;
+    msg_t messages[65556];
 } buff_t;
 
 short hash(const msg_t* msg);
-
+void init(buff_t* buff, size_t maxsize);
 int put(buff_t* buff, msg_t* msg);
 int pop(buff_t* buff, msg_t* msg);
+void increaseBuffer(buff_t* buff);
+void decreaseBuffer(buff_t* buff);

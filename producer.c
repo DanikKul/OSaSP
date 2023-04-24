@@ -1,19 +1,19 @@
 //
 // Created by dan on 19.4.23.
 //
-#include <sys/wait.h>
 
 #include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <signal.h>
+#include <pthread.h>
+#include <errno.h>
 
 
 #include "buffer.h"
 
 extern buff_t* msgs;
-extern pid_t producers[];
+extern pthread_t producers[];
 extern size_t prodCount;
 
 extern sem_t* waitForFreeSpace;
@@ -36,53 +36,56 @@ void createMessage(msg_t* msg) {
     msg -> hash = hash(msg);
 }
 
+_Noreturn void* produce(void* param __attribute__((unused))) {
+    fprintf(stdout, "\"Producer_%zu: Started...\"\n", (size_t) pthread_self());
+    srand(pthread_self());
+    msg_t* msg = (msg_t*) malloc(sizeof(msg_t));
+    for (;;) {
+        createMessage(msg);
+        sem_wait(waitForFreeSpace);
+        sem_wait(mutex);
+
+        put(msgs, msg);
+
+        sem_post(mutex);
+        sem_post(waitForAnyItem);
+
+        fprintf(stdout, "Producer_%zu: Putted in queue msg with:\nType: %d\nSize: %d\n\n", (size_t) pthread_self(), msg -> type, msg -> size);
+
+        sleep(5);
+    }
+}
+
 void createProducer() {
     if (prodCount >= PRODUCERS) {
         fprintf(stderr, "Main_%d: Producers limit exceeded (prodCount >= 128)\n", getpid());
         return;
     }
-    producers[prodCount] = fork();
-    if (producers[prodCount] == -1) {
-        fprintf(stderr, "Main_%d: Can't create \"Producer\" (ERROR: fork())\n", getpid());
+    int err = pthread_create(&producers[prodCount], NULL, produce, NULL);
+    if (err == EAGAIN) {
+        fprintf(stderr, "Main_%d: The system lacked the necessary resources to create a thread\n", getpid());
+        return;
+    } else if (err == EPERM) {
+        fprintf(stderr, "Main_%d: The caller doesn't have appropriate permission to set the required scheduling parameters or policy\n", getpid());
+        return;
+    } else if (err == EINVAL) {
+        fprintf(stderr, "Main_%d: The value specified by attr is invalid\n", getpid());
         return;
     }
-    if (producers[prodCount] != 0) {
-        fprintf(stdout, "Main_%d: Created \"Producer\" with PID: %d\n", getpid(), producers[prodCount]);
-        prodCount++;
-        return;
-    }
-    if (producers[prodCount] == 0) {
-        fprintf(stdout, "\"Producer_%d: Started...\"\n", getpid());
-        srand(getpid());
-        msg_t* msg = (msg_t*) malloc(sizeof(msg_t));
-
-        for (;;) {
-            createMessage(msg);
-            sem_wait(waitForFreeSpace);
-            sem_wait(mutex);
-
-            put(msgs, msg);
-
-            sem_post(mutex);
-            sem_post(waitForAnyItem);
-
-            fprintf(stdout, "Producer_%d: Putted in queue msg with:\nType: %d\nSize: %d\n\n", getpid(), msg -> type, msg -> size);
-
-            sleep(5);
-        }
-    }
+    prodCount++;
 }
 
 void removeProducer() {
     if (prodCount <= 0) {
-        fprintf(stderr, "Main_%d: Can't remove Producer (prodCount <= 0)\n", getpid());
+        fprintf(stderr, "Main_%d: Can't remove \"Producer\" (prodCount <= 0)\n", getpid());
         return;
     }
 
-    int status;
     prodCount--;
-    fprintf(stdout, "Main_%d: Removing \"Producer\" with PID: %d\n", getpid(), producers[prodCount]);
-    kill(producers[prodCount], SIGKILL);
-    wait(&status);
-    fprintf(stdout, "Main_%d: Process with PID: %d killed with exit status %d\n", getpid(), producers[prodCount], status);
+    fprintf(stdout, "Main_%d: Removing \"Producer\" with ID: %zu\n", getpid(), (size_t) producers[prodCount]);
+    sem_wait(mutex);
+    pthread_cancel(producers[prodCount]);
+    sem_post(mutex);
+    pthread_join(producers[prodCount], NULL);
+    fprintf(stdout, "Main_%d: Thread with ID: %zu is cancelled\n", getpid(), (size_t) producers[prodCount]);
 }
