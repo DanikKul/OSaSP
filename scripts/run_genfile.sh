@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PREV_GENFILE_BUILD="genfile"
-GENFILE_EXEC="./genfile"
+GENFILE_EXEC="/Users/dankulakovich/CLionProjects/OSaSP/genfile/cmake-build-debug/genfile"
 
 function echo_ok {
   echo -e "\033[32m$1\033[0m"
@@ -31,14 +31,15 @@ function check_build {
 function check_and_run_exec {
   if test -f "$1"; then
     echo_ok "Executable file '$1' found"
-    $1
+    echo_ok "Running..."
+    $1 $2 $3
   else
     echo_err "Executable file '$1' not found"
     exit 1
   fi
 }
 
-cd ../genfile
+cd ../genfile || exit
 echo_info "\n[GENFILE]"
 echo_info "\nProject 'genfile' files"
 ls
@@ -46,5 +47,9 @@ echo_info "\nCleaning previous build"
 check_build $PREV_GENFILE_BUILD
 echo_info "\nBuilding project"
 make
+echo_info "\nEnter filename"
+read -r filename
+echo_info "\nEnter size"
+read -r size
 echo_info "\nStarting './genfile'"
-check_and_run_exec "$GENFILE_EXEC"
+check_and_run_exec "$GENFILE_EXEC" "$filename" "$size"

@@ -1,20 +1,16 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
+#include "genfile.h"
 #include "utils.h"
 
 // Julian date generator
 
-double getJulian() {
+double getJulian(int r) {
     time_t now;
     now = time(NULL);
+    srandom(getpid() + r);
     struct tm* local = localtime(&now);
-    random();
-    int year = local -> tm_year, month = local -> tm_mon,
-    day = local -> tm_mday, hour = local -> tm_hour,
-    min = local -> tm_min, sec = local -> tm_sec;
+    int year = (int) random() % local -> tm_year, month = (int) random() % local -> tm_mon,
+    day = (int) random() % local -> tm_mday, hour = (int) random() % local -> tm_hour,
+    min = (int) random() % local -> tm_min, sec = (int) random() % local -> tm_sec;
     year += 1900;
     month++;
     int a = (int) ((14 - month) / 12);
@@ -49,18 +45,42 @@ void generate(char* path, char* filename, size_t size) {
 
     // Creating file
 
-    if (!(file = fopen(absolute_filename, "w+"))) {
+    if (!(file = fopen(absolute_filename, "wb"))) {
         fprintf(stderr, "Can't create/open file\n");
         exit(-4);
     }
 
+    // Generating structures
 
+    index_hdr_s header;
+    header.records = size;
+
+    for (size_t i = 0; i < header.records; i++) {
+        index_s record;
+        record.recno = i + 1;
+        record.time_mark = getJulian((int) i);
+        header.idx[i] = record;
+    }
+
+    // Writing to a file
+
+    fwrite(&header, sizeof(index_hdr_s), 1, file);
+
+    // Closing file and freeing memory
 
     fclose(file);
     free(absolute_filename);
 }
 
 int main(int argc, char* argv[]) {
+
+    struct rlimit limit;
+    getrlimit(RLIMIT_STACK, &limit);
+    limit.rlim_cur = limit.rlim_max;
+    setrlimit(RLIMIT_STACK, &limit);
+
+    // Check args
+
     if (argc < 2) {
         fprintf(stderr, "[ERROR]: Not enough arguments, please run program with file name and file size\n");
         return -1;
@@ -76,5 +96,6 @@ int main(int argc, char* argv[]) {
     }
 
     generate(argv[0], argv[1], filesize);
+    fprintf(stdout, "Generated successfully\n");
     return 0;
 }

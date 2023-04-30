@@ -39,7 +39,7 @@ function check_and_run_exec {
 }
 
 echo_info "\n[SORT_INDEX]"
-cd ../sort_index
+cd ../sort_index || exit
 echo_info "\nProject 'sort_index' files"
 ls
 echo_info "\nCleaning previous build"
