@@ -8,9 +8,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-const char PROJECT[] = "OSaSP";
-const char GENFILES_PATH[] = "genfile/generated_files/";
-
 typedef struct {
     double time_mark;
     uint64_t recno;
@@ -18,17 +15,14 @@ typedef struct {
 
 typedef struct {
     uint64_t records;
-    index_s idx[1000000];
+    index_s idx[10000000];
 } index_hdr_s;
 
-int compare(const void *a, const void *b) {
-
-    index_s *indexA = (index_s *)a;
-    index_s *indexB = (index_s *)b;
-
-    double cmp = indexB -> time_mark - indexA -> time_mark;
-
-    return cmp > 0 ? 1 : cmp < 0 ? -1 : 0;
-}
+typedef struct {
+    char* addr;
+    long memsize;
+    long blocks;
+    size_t no;
+} args;
 
 #endif //SORT_INDEX_UTILS_H

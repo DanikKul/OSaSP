@@ -1,16 +1,24 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-
 #include "sort_index.h"
+#include "thread.h"
 #include "utils.h"
 
-index_hdr_s* indices;
+const char PROJECT[] = "OSaSP";
+const char GENFILES_PATH[] = "genfile/generated_files/";
 
-int openFile(char* path, char* filename) {
+index_hdr_s* indices;
+pthread_t threads[8192];
+size_t countThreads;
+char* ptr;
+
+int compare(const void *a, const void *b) {
+    index_s *indexA = (index_s *)a;
+    index_s *indexB = (index_s *)b;
+    double cmp = indexB -> time_mark - indexA -> time_mark;
+    return cmp > 0 ? 1 : cmp < 0 ? -1 : 0;
+}
+
+
+void openFile(char* path, char* filename) {
 
     // Generating path to file
 
@@ -39,32 +47,20 @@ int openFile(char* path, char* filename) {
         fprintf(stderr, "Can't open file\n");
         exit(-7);
     }
-    char* ptr = mmap(0, sizeof(index_hdr_s), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    indices = (index_hdr_s*) ptr;
-    for (size_t i = 0; i < indices -> records; i++) {
-        fprintf(stdout, "%llu %f\n", indices -> idx[i].recno, indices -> idx[i].time_mark);
-    }
-    fprintf(stdout, "\n\nSORT\n\n");
-    qsort(indices -> idx, indices -> records, sizeof(index_s), compare);
-    for (size_t i = 0; i < indices -> records; i++) {
-        fprintf(stdout, "%llu %f\n", indices -> idx[i].recno, indices -> idx[i].time_mark);
-    }
-    if (msync(ptr, sizeof(index_hdr_s), MS_SYNC) < 0 ) {
-        perror("msync failed with error:");
-        return -1;
-    } else fprintf(stdout, "Synced\n");
-    munmap(ptr, sizeof(index_hdr_s));
+
+    // Mapping file into virtual memory
+
+    ptr = mmap(0, sizeof(index_hdr_s), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
     close(fd);
-    return fd;
 }
 
-void printFile(int fd) {
-    index_hdr_s header;
-    read(fd, &header, sizeof(index_hdr_s));
-
-    for (size_t i = 0; i < header.records; i++) {
-        fprintf(stdout, "%llu %f\n", header.idx[i].recno, header.idx[i].time_mark);
-    }
+void atExit() {
+    if (msync(ptr, sizeof(index_hdr_s), MS_SYNC) < 0) {
+        fprintf(stderr, "[ERROR]: syncing failed\n");
+        exit(-8);
+    } else fprintf(stdout, "Synced\n");
+    munmap(ptr, sizeof(index_hdr_s));
 }
 
 int main(int argc, char* argv[]) {
@@ -103,23 +99,27 @@ int main(int argc, char* argv[]) {
         }
         tmp /= 2;
     }
-    long threads = strtol(argv[3], NULL, 10);
-    if (threads == 0) {
+    long _threads = strtol(argv[3], NULL, 10);
+    if (_threads == 0) {
         fprintf(stderr, "[ERROR]: Threads amount is zero or not a number\n");
         return -2;
     }
-    if (threads < MIN_THREADS) {
+    if (_threads < MIN_THREADS) {
         fprintf(stderr, "[ERROR]: Threads amount is less than amount of kernels\n");
         return -5;
     }
-    if (threads > MAX_THREADS) {
+    if (_threads > MAX_THREADS) {
         fprintf(stderr, "[ERROR]: Threads amount is greater than max amount of threads\n");
         return -5;
     }
-    if (threads >= blocks) {
+    if (_threads >= blocks) {
         fprintf(stderr, "[ERROR]: Threads amount is greater than blocks amount\n");
         return -6;
     }
     openFile(argv[0], argv[4]);
+    createThreads(_threads, ptr, memsize, blocks);
+    sleep(1);
+    joinThreads();
+    pthread_barrier_init
     return 0;
 }
