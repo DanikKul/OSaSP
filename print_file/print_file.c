@@ -1,24 +1,24 @@
-#include "genfile.h"
-#include "utils.h"
+#include <stdint.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/resource.h>
 
-// Julian date generator
+const char PROJECT[] = "lab6";
+const char GENFILES_PATH[] = "genfile/generated_files/";
 
-double getJulian(int r) {
-    time_t now;
-    now = time(NULL);
-    srandom(getpid() + r);
-    struct tm* local = localtime(&now);
-    int year = (int) random() % local -> tm_year, month = (int) random() % local -> tm_mon,
-    day = (int) random() % local -> tm_mday, hour = (int) random() % local -> tm_hour,
-    min = (int) random() % local -> tm_min, sec = (int) random() % local -> tm_sec;
-    year += 1900;
-    month++;
-    int a = (int) ((14 - month) / 12);
-    int y = year + 4800 - a;
-    int m = month + 12 * a - 3;
-    double JDN = day + (int) ((153 * m + 2) / 5) + 365 * y + (int) (y / 4) - (int) (y / 100) + (int) (y / 400) - 32045;
-    return JDN + (double)(hour - 12) / 24 + (double) min / 1440 + (double) sec / 86400 - 2400000.5;
-}
+typedef struct {
+    double time_mark;
+    uint64_t recno;
+} index_s;
+
+typedef struct {
+    uint64_t records;
+    index_s idx[10000000];
+} index_hdr_s;
 
 void generate(char* path, char* filename, size_t size) {
     int file;
@@ -42,10 +42,11 @@ void generate(char* path, char* filename, size_t size) {
     }
     strcat(absolute_filename, GENFILES_PATH);
     strcat(absolute_filename, filename);
+    fprintf(stdout, "%s\n", absolute_filename);
 
     // Creating file
 
-    if (!(file = open(absolute_filename, O_RDWR | O_CREAT | O_TRUNC, S_IRWXO | S_IRWXU | S_IRWXG))) {
+    if (!(file = open(absolute_filename, O_RDWR, S_IRWXO | S_IRWXU | S_IRWXG))) {
         fprintf(stderr, "Can't create/open file\n");
         exit(-4);
     }
@@ -53,19 +54,17 @@ void generate(char* path, char* filename, size_t size) {
     // Generating structures
 
     index_hdr_s header;
-    header.records = size;
 
-    for (size_t i = 0; i < header.records; i++) {
-        index_s record;
-        record.recno = i + 1;
-        record.time_mark = getJulian((int) i);
-        header.idx[i] = record;
-    }
+    // Reading from the file with specific sizeofs
 
-    // Writing to a file with specific sizeofs to save file memory
-
-    write(file, &header, sizeof(uint64_t) + size * sizeof(index_s));
     read(file, &header, sizeof(uint64_t) + size * sizeof(index_s));
+
+    // Printing file to stdout
+
+    fprintf(stdout, "RECORDS: %lu\n", header.records);
+    for (size_t i = 0; i < header.records; i++) {
+        fprintf(stdout, "RECNO: %lu\t\t\tTIME: %f\n", header.idx[i].recno, header.idx[i].time_mark);
+    }
 
     // Closing file and freeing memory
 
@@ -97,6 +96,6 @@ int main(int argc, char* argv[]) {
     }
 
     generate(argv[0], argv[1], filesize);
-    fprintf(stdout, "Generated successfully\n");
+    fprintf(stdout, "Read successfully\n");
     return 0;
 }

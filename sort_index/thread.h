@@ -10,9 +10,12 @@
 #include <pthread.h>
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 #include "utils.h"
 
-void createThreads(long amount, char* addr, long memsize, long blocks);
-void joinThreads();
+void createThreads(long amount, long memsize, long blocks, char* path, char* filename);
+void joinThreads(int amount);
 
 #endif //SORT_INDEX_THREAD_H

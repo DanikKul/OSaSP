@@ -6,7 +6,7 @@ CFLAGS = -W -Wall -Wextra -std=c11 -pedantic -D_DEFAULT_SOURCE
 all: main
 
 main: main makefile
-	$(CC) $(CFLAGS) sort_index.c thread.c -o sort_index
+	$(CC) $(CFLAGS) print_file.c -o print_file
 
 clean:
-	rm sort_index
+	rm print_file

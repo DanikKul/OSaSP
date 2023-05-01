@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PREV_GENFILE_BUILD="genfile"
-GENFILE_EXEC="/Users/dankulakovich/CLionProjects/OSaSP/genfile/cmake-build-debug/genfile"
+GENFILE_EXEC="/home/dan/CLionProjects/lab6/genfile/genfile"
 
 function echo_ok {
   echo -e "\033[32m$1\033[0m"

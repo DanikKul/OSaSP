@@ -1,7 +1,7 @@
 #!/bin/bash
 
-PREV_SORT_BUILD="sort_index"
-SORT_INDEX_EXEC="/home/dan/CLionProjects/lab6/sort_index/sort_index"
+PREV_PRINTFILE_BUILD="print_file"
+PRINTFILE_EXEC="/home/dan/CLionProjects/lab6/print_file/print_file"
 
 function echo_ok {
   echo -e "\033[32m$1\033[0m"
@@ -31,28 +31,25 @@ function check_build {
 function check_and_run_exec {
   if test -f "$1"; then
     echo_ok "Executable file '$1' found"
-    $1 $2 $3 $4 $5
+    echo_ok "Running..."
+    $1 $2 $3
   else
     echo_err "Executable file '$1' not found"
     exit 1
   fi
 }
 
-echo_info "\n[SORT_INDEX]"
-cd ../sort_index || exit
-echo_info "\nProject 'sort_index' files"
+cd ../print_file || exit
+echo_info "\n[PRINT_FILE]"
+echo_info "\nProject 'print_file' files"
 ls
 echo_info "\nCleaning previous build"
-check_build "$PREV_SORT_BUILD"
+check_build $PREV_PRINTFILE_BUILD
 echo_info "\nBuilding project"
 make
-echo_info "\nEnter memsize"
-read -r memsize
-echo_info "\nEnter blocks"
-read -r blocks
-echo_info "\nEnter threads"
-read -r threads
 echo_info "\nEnter filename"
 read -r filename
-echo_info "\nStarting './sort_index'"
-check_and_run_exec "$SORT_INDEX_EXEC" "$memsize" "$blocks" "$threads" "$filename"
+echo_info "\nEnter size"
+read -r size
+echo_info "\nStarting './genfile'"
+check_and_run_exec "$PRINTFILE_EXEC" "$filename" "$size"

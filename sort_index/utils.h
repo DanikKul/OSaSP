@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <pthread.h>
 
 typedef struct {
     double time_mark;
@@ -24,5 +25,10 @@ typedef struct {
     long blocks;
     size_t no;
 } args;
+
+typedef struct {
+    int isBusy;
+    int block;
+} blocks_map;
 
 #endif //SORT_INDEX_UTILS_H
