@@ -2,10 +2,7 @@
 
 extern pthread_t threads[];
 extern size_t countThreads;
-pthread_barrier_t barrier_merge;
-pthread_barrier_t barrier_sort;
-pthread_barrier_t barrier_start;
-pthread_barrier_t barrier_merge_end;
+pthread_barrier_t barrier;
 pthread_mutex_t mutex;
 pthread_mutex_t merge_mutex;
 
@@ -14,11 +11,11 @@ pthread_t threads[8192];
 size_t countThreads;
 blocks_map* map;
 char* ptr;
-long BLOCKS;
+long BLOCKS, FILESIZE = 0, curSize = 0;
 const char PROJECT[] = "lab6";
 const char GENFILES_PATH[] = "genfile/generated_files/";
 
-void openFile(char* path, char* filename, long memsize) {
+void openFile(char* path, char* filename, long memsize, unsigned long addr) {
 
     // Generating path to file
 
@@ -43,23 +40,26 @@ void openFile(char* path, char* filename, long memsize) {
     // Opening file
 
     int fd;
-    if (!(fd = open(absolute_filename, O_RDWR))) {
+
+    if ((fd = open(absolute_filename, O_RDWR)) < 0) {
         fprintf(stderr, "Can't open file\n");
         exit(-7);
     }
 
+    struct stat st;
+    fstat(fd, &st);
+    FILESIZE = (st.st_size - sizeof(uint64_t)) / sizeof(index_s);
+
     // Mapping file into virtual memory
-
-    ptr = mmap(0, memsize * sizeof(index_s) + sizeof(uint64_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    indices = (index_hdr_s*) ptr;
-
+    ptr = mmap(0, memsize * sizeof(index_s) + sizeof(uint64_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, (int) addr);
+    indices = (index_hdr_s *) ptr;
     close(fd);
 }
 
 void atExit(long memsize) {
     if (msync(ptr, memsize * sizeof(index_s) + sizeof(uint64_t), MS_SYNC) < 0) {
         fprintf(stderr, "[ERROR]: syncing failed\n");
-        exit(-8);
+//        exit(-8);
     } else fprintf(stdout, "Synced\n");
     munmap(ptr, memsize * sizeof(index_s) + sizeof(uint64_t));
 }
@@ -73,7 +73,7 @@ int compare(const void *a, const void *b) {
 }
 
 void merge(long memsize, long blocks, long no) {
-    index_s idx1[memsize / blocks], idx2[memsize / blocks];
+    index_s* idx1 = (index_s*) malloc(memsize / blocks * sizeof(index_s)), *idx2 = (index_s*) malloc(memsize / blocks * sizeof(index_s));
     memcpy(idx1, indices -> idx + (memsize / blocks) * (no),  (memsize / blocks) * sizeof(index_s));
     memcpy(idx2, indices -> idx + (memsize / blocks) * (no + 1),  (memsize / blocks) * sizeof(index_s));
     size_t i = 0, j = 0, k = (memsize / blocks) * (no), n = (memsize / blocks);
@@ -97,14 +97,14 @@ void merge(long memsize, long blocks, long no) {
 
 void mergePhase(args* arguments) {
     while (BLOCKS > 4) {
-        pthread_barrier_wait(&barrier_merge);
+        pthread_barrier_wait(&barrier);
         if (arguments -> no == 0) {
             BLOCKS /= 2;
             for (int i = 0; i < BLOCKS; i++) {
                 map[i].isBusy = 0;
             }
         }
-        pthread_barrier_wait(&barrier_merge);
+        pthread_barrier_wait(&barrier);
         for (size_t i = 0; i <= (size_t) BLOCKS; i += 2) {
             long sav = -1;
             pthread_mutex_lock(&merge_mutex);
@@ -117,7 +117,7 @@ void mergePhase(args* arguments) {
                 merge(arguments->memsize, BLOCKS, (long) sav);
             }
         }
-        pthread_barrier_wait(&barrier_merge);
+        pthread_barrier_wait(&barrier);
     }
     fprintf(stdout, "THREAD_%lu: ENDED MERGING\n", arguments -> no);
 }
@@ -143,28 +143,29 @@ void sortPhase(args* arguments) {
 }
 
 static void* execute(args* arguments) {
-    fprintf(stdout, "THREAD_%lu: STARTING...\n", arguments -> no);
-    pthread_barrier_wait(&barrier_start);
-    fprintf(stdout, "THREAD_%lu: START SORTING\n", arguments -> no);
-    sortPhase(arguments);
-    fprintf(stdout, "THREAD_%lu: WAITING OTHER THREADS\n", arguments -> no);
-    pthread_barrier_wait(&barrier_sort);
-    fprintf(stdout, "THREAD_%lu: START MERGING\n", arguments -> no);
-    mergePhase(arguments);
-    pthread_barrier_wait(&barrier_merge_end);
+    fprintf(stdout, "THREAD_%lu: STARTING...\n", arguments->no);
+    while (FILESIZE > curSize) {
+        pthread_barrier_wait(&barrier);
+        fprintf(stdout, "THREAD_%lu: START SORTING\n", arguments->no);
+        sortPhase(arguments);
+        fprintf(stdout, "THREAD_%lu: WAITING OTHER THREADS\n", arguments->no);
+        pthread_barrier_wait(&barrier);
+        fprintf(stdout, "THREAD_%lu: START MERGING\n", arguments->no);
+        mergePhase(arguments);
+        pthread_barrier_wait(&barrier);
+        fprintf(stdout, "THREAD_%lu: SIZE LEFT: %lu\n", arguments->no, FILESIZE - curSize);
+    }
+    pthread_barrier_wait(&barrier);
     fprintf(stdout, "THREAD_%lu: FINISHED WORK...\n", arguments -> no);
     return NULL;
 }
 
 void createThreads(long amount, long memsize, long blocks, char* path, char* filename) {
-    pthread_barrier_init(&barrier_start, NULL, amount + 1);
-    pthread_barrier_init(&barrier_sort, NULL, amount + 1);
-    pthread_barrier_init(&barrier_merge_end, NULL, amount + 1);
-    pthread_barrier_init(&barrier_merge, NULL, amount + 1);
+    pthread_barrier_init(&barrier, NULL, amount + 1);
+    openFile(path, filename, memsize, 0);
     BLOCKS = 2 * blocks;
-    openFile(path, filename, memsize);
     for (int i = 0; i < amount; i++) {
-        args* arguments = (args*) malloc(sizeof(args));
+        args *arguments = (args *) malloc(sizeof(args));
         arguments -> addr = ptr;
         arguments -> memsize = memsize;
         arguments -> blocks = blocks;
@@ -174,7 +175,8 @@ void createThreads(long amount, long memsize, long blocks, char* path, char* fil
             fprintf(stderr, "The system lacked the necessary resources to create a thread\n");
             return;
         } else if (err == EPERM) {
-            fprintf(stderr, "The caller doesn't have appropriate permission to set the required scheduling parameters or policy\n");
+            fprintf(stderr,
+                    "The caller doesn't have appropriate permission to set the required scheduling parameters or policy\n");
             return;
         } else if (err == EINVAL) {
             fprintf(stderr, "The value specified by attr is invalid\n");
@@ -182,31 +184,40 @@ void createThreads(long amount, long memsize, long blocks, char* path, char* fil
         }
         countThreads++;
     }
-    map = (blocks_map*) malloc(blocks * sizeof(blocks_map));
-    for (int i = 0; i < blocks; i++) {
-        map[i].block = i;
-        if (i < amount) map[i].isBusy = 1;
-        else map[i].isBusy = 0;
-    }
-    args* arguments = (args*) malloc(sizeof(args));
+    args *arguments = (args *) malloc(sizeof(args));
     arguments -> addr = ptr;
     arguments -> memsize = memsize;
     arguments -> blocks = blocks;
     arguments -> no = 0;
-    pthread_mutex_init(&mutex, NULL);
-    pthread_barrier_wait(&barrier_start);
-    sortPhase(arguments);
-    pthread_mutex_init(&merge_mutex, NULL);
-    pthread_barrier_wait(&barrier_sort);
-    fprintf(stdout, "THREAD_%lu: START MERGING\n", arguments -> no);
-    mergePhase(arguments);
-    merge(memsize, 2, 0);
-    pthread_barrier_wait(&barrier_merge_end);
+    while (FILESIZE > curSize) {
+        map = (blocks_map *) malloc(blocks * sizeof(blocks_map));
+        for (int i = 0; i < blocks; i++) {
+            map[i].block = i;
+            if (i < amount) map[i].isBusy = 1;
+            else map[i].isBusy = 0;
+        }
+        pthread_mutex_init(&mutex, NULL);
+        pthread_barrier_wait(&barrier);
+        sortPhase(arguments);
+        pthread_mutex_init(&merge_mutex, NULL);
+        pthread_barrier_wait(&barrier);
+        fprintf(stdout, "THREAD_%lu: START MERGING\n", arguments->no);
+        mergePhase(arguments);
+        merge(memsize, 2, 0);
+        curSize += memsize;
+        if (curSize < FILESIZE) {
+            openFile(path, filename, memsize, curSize * sizeof(index_s));
+        }
+        BLOCKS = 2 * blocks;
+        pthread_barrier_wait(&barrier);
+    }
+    pthread_barrier_wait(&barrier);
     atExit(memsize);
 }
 
 void joinThreads(int amount) {
     for (int i = 0; i < amount; i++) {
+        pthread_cancel(threads[i]);
         pthread_join(threads[i], NULL);
     }
 }

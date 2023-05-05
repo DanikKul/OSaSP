@@ -16,7 +16,7 @@ typedef struct {
 
 typedef struct {
     uint64_t records;
-    index_s idx[10000000];
+    index_s idx[1000000000];
 } index_hdr_s;
 
 typedef struct {
