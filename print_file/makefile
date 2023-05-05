@@ -3,9 +3,9 @@ CFLAGS = -W -Wall -Wextra -std=c11 -pedantic -D_DEFAULT_SOURCE
 
 .PHONY: clean
 
-all: main
+all: build
 
-main: main makefile
+build:
 	$(CC) $(CFLAGS) print_file.c -o print_file
 
 clean:
