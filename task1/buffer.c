@@ -75,11 +75,9 @@ void decreaseBuffer(buff_t* buff) {
         return;
     }
 
-    if (buff -> size >= 0) {
-        if (buff -> maxsize <= 0) {
-            return;
-        } else {
-            --buff -> maxsize;
-        }
+    if (buff -> maxsize <= 0) {
+        return;
+    } else {
+        --buff -> maxsize;
     }
 }
