@@ -11,7 +11,7 @@
 typedef struct {
     char type;
     short hash;
-    char size;
+    unsigned char size;
     char data[256];
 } msg_t;
 
