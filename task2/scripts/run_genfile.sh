@@ -2,6 +2,7 @@
 
 PREV_GENFILE_BUILD="genfile"
 GENFILE_EXEC="./genfile"
+PATH_TO_FILE=""
 
 function echo_ok {
   echo -e "\033[32m$1\033[0m"
@@ -52,6 +53,8 @@ read -r filename
 echo_info "\nEnter size"
 read -r size
 echo_info "\nStarting './genfile'"
+rm "$filename"
 check_and_run_exec "$GENFILE_EXEC" "$filename" "$size"
-echo_info "Cleaning..."
-check_build $PREV_GENFILE_BUILD
+echo_info "\nFull path to file"
+realpath "$filename"
+echo_info "\n"

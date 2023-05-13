@@ -6,14 +6,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include "utils.h"
 
 int openFile(char *path) {
     int fd;
-    if ((fd = open(path, O_RDWR | O_CREAT | O_TRUNC, S_IRWXO | S_IRWXG | S_IRWXU)) == -1) {
+    if ((fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0600)) == -1) {
         fprintf(stderr, "[ERROR]: Can't create/generate file\n");
         exit(-1);
     }

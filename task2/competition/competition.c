@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -15,7 +14,7 @@ long lastModifiedPosition = -1;
 // SERVICE
 int openFile(char *path) {
     int fd;
-    if ((fd = open(path, O_RDWR)) == -1) {
+    if ((fd = open(path, O_RDWR, 0666)) == -1) {
         fprintf(stderr, "[ERROR]: Can't open file\n");
         exit(-1);
     }
@@ -28,32 +27,40 @@ void closeFile(int fd) {
 }
 
 // SERVICE
-int lock_read(int fd, long no) {
+int lock(int fd, long no) {
     struct flock fl;
-    fl.l_len = sizeof(struct record_s);
-    fl.l_start = no * fl.l_len;
+    if (no != -2) {
+        fl.l_len = sizeof(struct record_s);
+        fl.l_start = no * fl.l_len;
+    } else {
+        fl.l_len = 0;
+        fl.l_start = 0;
+    }
     fl.l_whence = SEEK_SET;
-    fl.l_type = F_RDLCK;
-    fl.l_pid = getpid();
-    if (fcntl(fd, F_SETLK, &fl) == -1) {
+    fl.l_type = F_WRLCK;
+    if (fcntl(fd, F_SETLKW, &fl) == -1) {
         if (errno == EACCES || errno == EAGAIN) {
-            fprintf(stderr, "[ERROR]: Can't unlock\n");
+            fprintf(stderr, "[ERROR]: Can't lock write\n");
         } else {
-            fprintf(stderr, "[ERROR]: Unhandled error while unlocking\n");
+            fprintf(stderr, "[ERROR]: Unhandled error while locking write\n");
         }
         return -1;
     }
-    fprintf(stdout, "%ld %d %d %ld %d\n\n", fl.l_len, fl.l_type, fl.l_whence, fl.l_start, fl.l_pid);
     return 0;
 }
 
 // SERVICE
-int lock_write(int fd, long no) {
+int unlock(int fd, long no) {
     struct flock fl;
-    fl.l_len = sizeof(struct record_s);
-    fl.l_start = no * fl.l_len;
+    if (no != -2) {
+        fl.l_len = sizeof(struct record_s);
+        fl.l_start = no * fl.l_len;
+    } else {
+        fl.l_len = 0;
+        fl.l_start = 0;
+    }
     fl.l_whence = SEEK_SET;
-    fl.l_type = F_WRLCK;
+    fl.l_type = F_UNLCK;
     if (fcntl(fd, F_SETLK, &fl) == -1) {
         if (errno == EACCES || errno == EAGAIN) {
             fprintf(stderr, "[ERROR]: Can't unlock\n");
@@ -68,11 +75,15 @@ int lock_write(int fd, long no) {
 
 void print_lock(int fd, long no) {
     struct flock fl;
-    fl.l_len = sizeof(struct record_s);
-    fl.l_start = no * fl.l_len;
+    if (no != -2) {
+        fl.l_len = sizeof(struct record_s);
+        fl.l_start = no * fl.l_len;
+    } else {
+        fl.l_len = 0;
+        fl.l_start = 0;
+    }
     fl.l_whence = SEEK_SET;
-    fl.l_type = F_WRLCK;
-    fl.l_pid = getpid();
+    fl.l_type = F_UNLCK;
     if (fcntl(fd, F_GETLK, &fl) == -1) {
         if (errno == EACCES || errno == EAGAIN) {
             fprintf(stderr, "[ERROR]: Can't unlock\n");
@@ -80,25 +91,15 @@ void print_lock(int fd, long no) {
             fprintf(stderr, "[ERROR]: Unhandled error while unlocking\n");
         }
     }
-    fprintf(stdout, "%ld %d %d %ld %d\n\n", fl.l_len, fl.l_type, fl.l_whence, fl.l_start, fl.l_pid);
+    fprintf(stdout, "[STATUS]: %s, [POSITION]: %ld\n", (fl.l_type == F_WRLCK || fl.l_type == F_RDLCK) ? "LOCKED" : "UNLOCKED", no + 1);
 }
 
-// SERVICE
-int unlock(int fd, long no) {
-    struct flock fl;
-    fl.l_len = sizeof(struct record_s);
-    fl.l_start = no * fl.l_len;
-    fl.l_whence = SEEK_SET;
-    fl.l_type = F_UNLCK;
-    if (fcntl(fd, F_SETLK, &fl) == -1) {
-        if (errno == EACCES || errno == EAGAIN) {
-            fprintf(stderr, "[ERROR]: Can't unlock\n");
-
-        } else {
-            fprintf(stderr, "[ERROR]: Unhandled error while unlocking\n");
-        }
-        return -1;
-    }
+// LOGIC
+int isEqual (struct record_s* rec1, struct record_s* rec2) {
+    if (strcmp(rec1 -> name, rec2 -> name) == 0 &&
+    strcmp(rec1 -> address, rec2 -> address) == 0 &&
+    rec1 -> semester == rec2 -> semester)
+        return 1;
     return 0;
 }
 
@@ -123,11 +124,12 @@ struct record_s* getRecord(int fd, long no) {
         return NULL;
     }
 
-    fprintf(stdout, "SEARCHING RECORD %zu %zu\n", size, no);
     struct record_s* record = (struct record_s*) malloc(sizeof(struct record_s));
+    print_lock(fd, no - 1);
+    lock(fd, no - 1);
     lseek(fd, (long)((no - 1) * sizeof(struct record_s)), SEEK_SET);
     read(fd, record, sizeof(struct record_s));
-
+    unlock(fd, no - 1);
     lastReadPosition = (long) no - 1;
 
     return record;
@@ -152,7 +154,7 @@ void modifyRecord(int fd, long no) {
     fflush(stdin);
     fseek(stdin, 0, SEEK_SET);
     fgets(record -> address, 150, stdin);
-    fprintf(stdout, "\nENTER STUDENT'S ADDRESS\n>");
+    fprintf(stdout, "\nENTER STUDENT'S SEMESTER\n>");
     fflush(stdin);
     fseek(stdin, 0, SEEK_SET);
     fgets(tmp, 20, stdin);
@@ -167,14 +169,32 @@ void modifyRecord(int fd, long no) {
 // WRITEONLY
 void putFile(int fd) {
     fprintf(stdout, "[INFO]: SAVING LAST MODIFIED RECORD\n");
-    if (lastModifiedPosition != -1U && lastModified != NULL) {
-        lseek(fd, (long) (lastModifiedPosition * sizeof(struct record_s)), SEEK_SET);
-        write(fd, lastModified, sizeof(struct record_s));
-        fprintf(stdout, "\nNO: %zu\nNAME: %s\nADDRESS: %s\nSEMESTER: %u\n\n", lastModifiedPosition + 1,
-                lastModified -> name, lastModified -> address, lastModified -> semester);
-    } else {
-        fprintf(stdout, "[INFO]: No modified records\n");
+    print_lock(fd, lastModifiedPosition);
+    while (1) {
+        if (lastModifiedPosition != -1U && lastModified != NULL) {
+            struct record_s* saved = getRecord(fd, lastModifiedPosition + 1);
+            lock(fd, lastModifiedPosition);
+            print_lock(fd, lastModifiedPosition);
+            sleep(5);
+            struct record_s *new = getRecord(fd, lastModifiedPosition + 1);
+            if (isEqual(new, saved)) {
+                lseek(fd, (long) (lastModifiedPosition * sizeof(struct record_s)), SEEK_SET);
+                write(fd, lastModified, sizeof(struct record_s));
+                fprintf(stdout, "\nNO: %zu\nNAME: %s\nADDRESS: %s\nSEMESTER: %u\n\n", lastModifiedPosition + 1,
+                        lastModified -> name, lastModified -> address, lastModified -> semester);
+                sleep(3);
+                unlock(fd, lastModifiedPosition);
+                break;
+            } else {
+                fprintf(stdout, "[WARNING]: Somebody modified record that user trying to modify. Retrying...\n");
+                unlock(fd, lastModifiedPosition);
+            }
+        } else {
+            fprintf(stdout, "[INFO]: No modified records\n");
+            break;
+        }
     }
+    fprintf(stdout, "[INFO]: Saved\n");
 }
 
 // READONLY
@@ -183,10 +203,13 @@ void printFile(int fd) {
     fprintf(stdout, "[INFO]: PRINTING FILE\n");
     size_t size = getFileSize(fd);
     for (size_t i = 0; i < size; i++) {
+        print_lock(fd, i);
+        lock(fd, i);
         struct record_s* record = (struct record_s*) malloc(sizeof(struct record_s));
         read(fd, record, sizeof(struct record_s));
         fprintf(stdout, "\nNO: %zu\nNAME: %s\nADDRESS: %s\nSEMESTER: %u\n\n", i + 1, record -> name, record -> address, record -> semester);
         lastReadPosition = (long) i;
+        unlock(fd, i);
     }
 }
 
@@ -217,6 +240,8 @@ void menu(int fd) {
             break;
         } else if (choice == 'c') {
             system("clear");
+        } else if (choice == 'm') {
+            fprintf(stdout, "MENU:\n[1] - PRINT FILE\n[2] - GET RECORD\n[3] - MODIFY RECORD\n[4] - SAVE LAST MODIFIED RECORD\n[c] - CLEAR SCREEN\n[q] - EXIT\n\n");
         }
     }
 }
@@ -239,15 +264,7 @@ int main(int argc, char *argv[]) {
     strncpy(path, argv[1], strlen(argv[1]) * sizeof(char));
     path[strlen(argv[1]) * sizeof(char)] = '\0';
     int fd = openFile(path);
-//    menu(fd);
-    lock_read(fd, 1);
-    lock_write(fd, 1);
-    print_lock(fd, 1);
-    printFile(fd);
-//    struct record_s* record = getRecord(fd, 1);
-//    fprintf(stdout, "\nNAME: %s\nADDRESS: %s\nSEMESTER: %u\n\n", record -> name, record -> address, record -> semester);
-    sleep(20);
+    menu(fd);
     closeFile(fd);
-
     return 0;
 }
