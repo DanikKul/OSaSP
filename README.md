@@ -5,6 +5,6 @@
 ## [№4 (IPC) Семафоры, мьютексы и процессы](https://github.com/DanikKul/OSaSP/tree/lab4)
 ## [№5 Семафоры, мьютексы и потоки](https://github.com/DanikKul/OSaSP/tree/lab5)
 ## [№6 Потоки и файлы, отображенные в память](https://github.com/DanikKul/OSaSP/tree/lab6)
-## [№7 Не выполнена](https://github.com/DanikKul/OSaSP/tree/lab7)
+## [№7 Потоки и условные переменные / Открытые файлы и RW блокировки](https://github.com/DanikKul/OSaSP/tree/lab7)
 ## [№8 Не выполнена](https://github.com/DanikKul/OSaSP/tree/lab8)
 ## [Курсовой проект "Диспетчер задач на Linux"](https://github.com/DanikKul/OSaSP/tree/project)
