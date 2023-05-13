@@ -74,7 +74,7 @@ int main() {
     init(msgs, BUFFER_SIZE);
 
     char choice;
-    fprintf(stdout, "Menu:\n[p] - Create producer\n[c] - Create consumer\n[w] - Remove producer\n[e] - Remove consumer\n[q] - Quit\n\n");
+    fprintf(stdout, "Menu:\n[p] - Create producer\n[c] - Create consumer\n[w] - Remove producer\n[e] - Remove consumer\n[s] - Print stats\n[+] - Increase buffer\n[-] - Decrease buffer\n[q] - Quit\n\n");
     while (1) {
         fscanf(stdin, "%c", &choice);
         if (choice == 'p') {
