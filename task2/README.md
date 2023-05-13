@@ -31,3 +31,6 @@ bash run_competition.sh
 Enter path to file
 /path/to/file
 ```
+# Notes
+
+If print_lock(fd, no) fails just delete it. It works perfectly without that function
