@@ -89,7 +89,24 @@ void handleList(args* arg) {
             strcat(output, "/");
         }
         if (cur_dir -> d_type == DT_LNK) {
-            // TODO: Добавить обработчик символических ссылок (потно)
+            char* tmp = (char*) malloc(500 * sizeof(char));
+            strcat(tmp, arg -> path);
+            if (tmp[strlen(tmp) - 1] != '/') {
+                strcat(tmp, "/");
+            }
+            strcat(tmp, cur_dir -> d_name);
+            (void) readlink(tmp, tmp, 500);
+            struct stat* st = (struct stat*) malloc(sizeof(struct stat));\
+            if (lstat(tmp, st) != 0) {
+                fprintf(stdout, "THREAD_%zu: [WARNING]: lstat() error\n", (size_t) pthread_self());
+            }
+            if (S_ISLNK(st -> st_mode)) {
+                strcat(output, " -->> ");
+            } else {
+                strcat(output, " --> ");
+            }
+            tmp = dirname(tmp, -2);
+            strcat(output, tmp);
         }
         strcat(output, "\n");
     }
@@ -116,8 +133,11 @@ void handleChangeDirectory(char* request, args* arg) {
         int n;
         n = scandir(newpath, &namelist, 0, alphasort);
         if (n < 0) {
-            fprintf(stderr, "THREAD_%zu: [ERROR]: Error at opening directory\n", (size_t) pthread_self());
-            send(arg -> client_socket, "Internal server error\0", sizeof("Internal server error\0"), 0);
+            fprintf(stdout, "THREAD_%zu: [WARNING]: Can't open directory\n", (size_t) pthread_self());
+            char* path;
+            path = realpath(arg -> path, NULL);
+            path = dirname(path, -1);
+            send(arg -> client_socket, path, 1024 * sizeof(char), 0);
             return;
         } else {
             int flag = 0;
@@ -136,8 +156,11 @@ void handleChangeDirectory(char* request, args* arg) {
             }
             free(namelist);
             if (!flag) {
-                fprintf(stderr, "THREAD_%zu: [ERROR]: Error at opening directory\n", (size_t) pthread_self());
-                send(arg -> client_socket, "No such directory\0", sizeof("No such directory\0"), 0);
+                fprintf(stdout, "THREAD_%zu: [WARNING]: Can't open directory\n", (size_t) pthread_self());
+                char* path;
+                path = realpath(arg -> path, NULL);
+                path = dirname(path, -1);
+                send(arg -> client_socket, path, 1024 * sizeof(char), 0);
                 return;
             }
         }
@@ -148,7 +171,10 @@ void handleChangeDirectory(char* request, args* arg) {
     n = scandir(newpath, &namelist, 0, alphasort);
     if (n < 0) {
         fprintf(stderr, "THREAD_%zu: [ERROR]: Error at opening directory\n", (size_t) pthread_self());
-        send(arg -> client_socket, "Internal server error\0", sizeof("Internal server error\0"), 0);
+        char* path;
+        path = realpath(arg -> path, NULL);
+        path = dirname(path, -1);
+        send(arg -> client_socket, path, 1024 * sizeof(char), 0);
         return;
     } else {
         while(n--) {
@@ -161,7 +187,10 @@ void handleChangeDirectory(char* request, args* arg) {
         free(namelist);
     }
     arg -> path = newpath;
-    send(arg -> client_socket, "Directory changed successfully\0", sizeof("Directory changed successfully\0"), 0);
+    char* path;
+    path = realpath(arg -> path, NULL);
+    path = dirname(path, -1);
+    send(arg -> client_socket, path, 1024 * sizeof(char), 0);
 }
 
 // Handler of "exit" request

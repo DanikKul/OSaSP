@@ -13,5 +13,6 @@
 int validateQuotes(char* string);
 char* removeQuotes(char* string);
 int directoriesAmount(const char* path);
+char* dirname(char* fullpath, int no);
 
 #endif //SERVER_UTILITIES_H

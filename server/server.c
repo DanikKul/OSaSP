@@ -42,6 +42,10 @@ void dispatch(char* request, args* arg) {
 
 // Function that every thread executes while serving client
 static void* serve(args* arg) {
+    char* path = (char*) malloc(500 * sizeof(char));
+    realpath(arg -> path, path);
+    path = dirname(path, -1);
+    send(arg -> client_socket, path, strlen(path), 0);
     char buffer[BUFFER_SIZE];
     fprintf(stdout, "THREAD_%zu: [INFO]: Start serving\n", (size_t) pthread_self());
     while (1) {

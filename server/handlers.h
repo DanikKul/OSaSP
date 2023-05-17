@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
 
 #include "utilities.h"
 

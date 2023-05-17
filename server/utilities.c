@@ -44,6 +44,37 @@ char* removeQuotes(char* string) {
     return output;
 }
 
+// This function extracts relative paths using "no"
+char* dirname(char* fullpath, int no) {
+    size_t size = 0;
+    size_t paths = 0;
+    size_t idx = 0;
+    size_t curr = 0;
+    char* path = (char*) malloc(500 * sizeof(char));
+    while (fullpath[size] != '\0') {
+        if (fullpath[size++] == '/') paths++;
+    }
+
+    if (no < 0) {
+        no = (int) paths + no + 1;
+    }
+    if (no > paths) {
+        return NULL;
+    }
+    while (fullpath[idx] != '\0') {
+        if (curr != no) {
+            if (fullpath[idx] == '/') {
+                curr++;
+            }
+        } else {
+            path = fullpath + idx;
+            break;
+        }
+        idx++;
+    }
+    return path;
+}
+
 // That function return amount of directories in current path
 int directoriesAmount(const char* path) {
     int amount = 0;
