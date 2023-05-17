@@ -11,7 +11,7 @@ int validateQuotes(char* string) {
     int double_quotes = 0;
     int unary_quotes = 0;
 
-    for (int i = 0; i < strlen(string); i++) {
+    for (int i = 0; i < (int) strlen(string); i++) {
         if (string[i] == '\"') double_quotes++;
         if (string[i] == '\'') unary_quotes++;
     }
@@ -34,7 +34,7 @@ char* removeQuotes(char* string) {
     char* output = (char*) malloc(sizeof(char) * strlen(string));
     int idx = 0;
 
-    for (int i = 0; i < strlen(string); i++) {
+    for (int i = 0; i < (int) strlen(string); i++) {
         if (string[i] != '\'' && string[i] != '\"') {
             output[idx] = string[i];
             idx++;
@@ -58,11 +58,11 @@ char* dirname(char* fullpath, int no) {
     if (no < 0) {
         no = (int) paths + no + 1;
     }
-    if (no > paths) {
+    if (no > (int) paths) {
         return NULL;
     }
     while (fullpath[idx] != '\0') {
-        if (curr != no) {
+        if ((int) curr != no) {
             if (fullpath[idx] == '/') {
                 curr++;
             }

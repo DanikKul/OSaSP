@@ -50,7 +50,7 @@ static void* serve(args* arg) {
     fprintf(stdout, "THREAD_%zu: [INFO]: Start serving\n", (size_t) pthread_self());
     while (1) {
         // Read and print client message
-        size_t bytes_read = recv(arg -> client_socket, buffer, sizeof(buffer), 0);
+        int bytes_read = (int) recv(arg -> client_socket, buffer, sizeof(buffer), 0);
         if (bytes_read == -1) {
             fprintf(stderr, "THREAD_%zu: [ERROR]: Can't read client data\n", (size_t) pthread_self());
             close(arg -> client_socket);
