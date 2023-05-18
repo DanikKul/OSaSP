@@ -114,7 +114,7 @@ void handleList(args* arg) {
     if (strlen(output) == 0) {
         send(arg -> client_socket, "server: folder is empty\0", strlen("server: folder is empty\0"), 0);
     } else {
-        send(arg->client_socket, output, strlen(output), 0);
+        send(arg -> client_socket, output, strlen(output), 0);
     }
 }
 
@@ -201,5 +201,4 @@ void handleExit(args* arg) {
     send(arg -> client_socket, "goodbye\0", strlen("goodbye\0"), 0);
     close(arg -> client_socket);
     fprintf(stdout, "THREAD_%zu: [INFO]: Terminated\n", (size_t) pthread_self());
-    pthread_exit(NULL);
 }

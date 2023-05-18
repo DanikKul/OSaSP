@@ -16,32 +16,18 @@ int executeFile(const char* path, int client_fd, char* cur_path) {
     if ((fd = open(path, O_RDONLY, 0644)) == -1) {
         return -1;
     }
-    char* buffer = (char*) malloc(200 * sizeof(char));
+    char* buffer = (char*) malloc(20000 * sizeof(char));
     read(fd, buffer, 20000);
-    char commands[100][200];
+    char* commands[200];
     int idx = 0;
-    int idx_c = 0;
-    int counter = 0;
-    while (buffer[idx] != '\0') {
-        if (buffer[idx] == '\n') {
-            counter++;
-            idx_c = 0;
-            idx++;
-            continue;
-        }
-        commands[counter][idx_c] = buffer[idx];
-        idx++, idx_c++;
-    }
-
+    while ((commands[idx] = strsep(&buffer, "\n")) != NULL) idx++;
     char buffer_tmp[BUFFER_SIZE];
-
-    for (int i = 0; i < counter + 1; i++) {
-
+    for (int i = 0; i < idx; i++) {
         // Send a message to the server
         fprintf(stdout, "%s> ", cur_path);
         if (strlen(commands[i]) == 1 && commands[i][0] == '\n') continue;
         fprintf(stdout, "%s\n", commands[i]);
-        send(client_fd, commands[i], sizeof(commands[i]), 0);
+        send(client_fd, commands[i], strlen(commands[i]) * sizeof(char), 0);
 
         // Receive and print server response
         long b = recv(client_fd, buffer_tmp, BUFFER_SIZE * sizeof(char), 0);
@@ -75,7 +61,7 @@ void runClient(char* addr, long port) {
     char cur_path[BUFFER_SIZE];
     int client_fd;
     struct sockaddr_in server_address;
-    char buffer[BUFFER_SIZE];
+    char* buffer = (char*) malloc(BUFFER_SIZE * sizeof(char));
 
     // Create socket
     if ((client_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -106,6 +92,11 @@ void runClient(char* addr, long port) {
         return;
     } else if (bytes_received == 0) {
         fprintf(stdout, "CLIENT: [INFO]: Server disconnected\n");
+        close(client_fd);
+        return;
+    }
+    if (strncmp("error:full server", cur_path, strlen("error:full server")) == 0) {
+        fprintf(stdout, "Server is full\n");
         close(client_fd);
         return;
     }
@@ -149,7 +140,7 @@ void runClient(char* addr, long port) {
         } else {
             fprintf(stdout, "%s\n", buffer);
         }
-        memset(buffer, 0, sizeof(buffer));
+        memset(buffer, 0, BUFFER_SIZE * sizeof(char));
     }
 }
 

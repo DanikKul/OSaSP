@@ -4,10 +4,11 @@
 
 #include "handlers.h"
 
-#define MAX_CLIENTS 5
+#define MAX_CLIENTS 3
 #define BUFFER_SIZE 1024
 
 pthread_t threads[MAX_CLIENTS];
+int client_sockets[MAX_CLIENTS];
 
 // This function redirects serving threads to a function according to client's request
 void dispatch(char* request, args* arg) {
@@ -16,6 +17,8 @@ void dispatch(char* request, args* arg) {
         handleEcho(request + 5, arg);
     } else if (strcmp(request, "exit") == 0) {
         handleExit(arg);
+        client_sockets[arg -> thread_no] = 0;
+        pthread_exit(NULL);
     } else if (strncmp(request, "delay", 5) == 0) {
         if (strncmp(request, "delay ", 6) == 0) {
             handleDelay(request + 6, arg);
@@ -54,10 +57,12 @@ static void* serve(args* arg) {
         if (bytes_read == -1) {
             fprintf(stderr, "THREAD_%zu: [ERROR]: Can't read client data\n", (size_t) pthread_self());
             close(arg -> client_socket);
+            client_sockets[arg -> thread_no] = 0;
             pthread_exit(NULL);
         } else if (bytes_read == 0) {
             fprintf(stdout, "THREAD_%zu: [INFO]: Client disconnected\n", (size_t) pthread_self());
             close(arg -> client_socket);
+            client_sockets[arg -> thread_no] = 0;
             pthread_exit(NULL);
         }
 
@@ -78,9 +83,11 @@ int main(int argc, char* argv[]) {
             port = 8123;
         }
     }
-    int server_fd, client_sockets[MAX_CLIENTS], client_socket;
+    int server_fd, client_socket;
     struct sockaddr_in server_address, client_address;
     socklen_t client_address_len = sizeof(client_address);
+
+    for (int i = 0; i < MAX_CLIENTS; i++) client_sockets[i] = 0;
 
     // Create socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -124,7 +131,10 @@ int main(int argc, char* argv[]) {
                     break;
                 }
             }
-
+            if (i == MAX_CLIENTS) {
+                send(client_socket, "error:full server", sizeof("error:full server"), 0);
+                continue;
+            }
             args *arg = (args *) malloc(sizeof(args));
             arg -> client_socket = client_socket;
             arg -> thread_no = i;
