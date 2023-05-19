@@ -1,6 +1,6 @@
 # Instructions
 
-Зайдите
+Зайдите в папку со скриптами
   ```
   cd /path/to/lab/scripts
   ```
