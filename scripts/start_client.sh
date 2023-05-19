@@ -21,5 +21,5 @@ cd ../client || exit
 echo_info "\n[CLIENT]"
 echo_info "\nProject 'client' files"
 ls
-echo_info "\nTo manipulate IP and address change config/config.json"
+echo_info "\nTo manipulate IP and port change config/config.json"
 python3 client.py

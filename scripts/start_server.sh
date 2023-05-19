@@ -21,5 +21,5 @@ cd ../server || exit
 echo_info "\n[SERVER]"
 echo_info "\nProject 'server' files"
 ls
-echo_info "\nTo manipulate IP and address change config/config.json"
+echo_info "\nTo manipulate IP and port change config/config.json"
 python3 server.py
