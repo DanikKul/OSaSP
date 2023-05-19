@@ -1,0 +1,7 @@
+{
+  "address": "localhost",
+  "port": 8081,
+  "root": "PycharmProjects",
+  "abs_root": "/Users/dankulakovich/PycharmProjects",
+  "max_clients": 2
+}

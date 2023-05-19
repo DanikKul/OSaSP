@@ -1,0 +1,9 @@
+info
+ls
+cd lab8/.idea
+cd
+cd lab8
+ls
+cd .idea
+cd /
+echo hello world

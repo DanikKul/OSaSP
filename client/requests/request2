@@ -1,0 +1,2 @@
+echo "I'll try to execute myself"
+run ./requests/request2
