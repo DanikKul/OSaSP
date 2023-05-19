@@ -1,4 +1,5 @@
 import socket
+from parser import parse_json, fix_json
 
 
 def run_file(client_socket: socket.socket, request: str, path: str):
@@ -37,12 +38,12 @@ def run_file(client_socket: socket.socket, request: str, path: str):
     return path
 
 
-def run_client():
+def run_client(config: dict):
     # Create a TCP socket
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # Connect to the server
-    server_address = ('localhost', 8081)
+    server_address = (config['address'], config['port'])
     client_socket.connect(server_address)
     path = client_socket.recv(1024).decode('utf-8')
 
@@ -85,4 +86,6 @@ def run_client():
 
 
 if __name__ == "__main__":
-    run_client()
+    conf = parse_json('./config/config.json')
+    fix_json(conf)
+    run_client(conf)
