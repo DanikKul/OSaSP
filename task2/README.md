@@ -34,3 +34,5 @@ Enter path to file
 # Notes
 
 If print_lock(fd, no) fails just delete it. It works perfectly without that function
+
+No read locks, they don't work on my OS, edit code yourself
