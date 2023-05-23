@@ -7,4 +7,5 @@
 ## [№6 Потоки и файлы, отображенные в память](https://github.com/DanikKul/OSaSP/tree/lab6)
 ## [№7 Потоки и условные переменные / Открытые файлы и RW блокировки](https://github.com/DanikKul/OSaSP/tree/lab7)
 ## [№8 (IPC) Сокеты](https://github.com/DanikKul/OSaSP/tree/lab8)
+## [№8 (IPC) Сокеты UNREAL PYTHON REMAKE](https://github.com/DanikKul/OSaSP/tree/lab8-Python)
 ## [Курсовой проект "Диспетчер задач на Linux"](https://github.com/DanikKul/OSaSP/tree/project)
